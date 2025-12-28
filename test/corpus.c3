@@ -1,13 +1,12 @@
 import c3fmt::executable;
-import std::io; 
+import std::io;
 
 macro test($name, $input_path, $solution_path) {
     String input = c3fmt::executable::read_file($input_path)!!;
     String solution = c3fmt::executable::read_file($solution_path)!!;
     String formatted = c3fmt::format_string(mem, input)!!;
 
-
-    int len = solution.len; 
+    int len = solution.len;
     if(formatted.len != len) {
         len = (int)min(formatted.len, len);
     }
@@ -16,12 +15,13 @@ macro test($name, $input_path, $solution_path) {
     for(usz i = 0; i < len; ++i) {
         if(solution[i] != formatted[i]) {
             io::eprintfn("Character mismatch '%c' vs '%c' on line %s.", solution[i], formatted[i], line);
+            io::eprintfn("For context, here is the output :");
+            io::eprintfn("%s", formatted);
+
             input.free(mem);
             solution.free(mem);
             formatted.free(mem);
 
-            io::eprintfn("For context, here is the output :");
-            io::eprintfn("%s", formatted);
             assert(false);
         }
 
@@ -30,13 +30,21 @@ macro test($name, $input_path, $solution_path) {
         }
     }
 
-    assert(formatted == solution, $name +++ " test failed!"); 
+    assert(formatted == solution, $name +++ " test failed!");
 
-    input.free(mem); 
+    input.free(mem);
     solution.free(mem);
     formatted.free(mem);
 }
 
-fn void corpus_struct () @test {
-    test("struct", "test/corpus/simple/struct.c3", "test/corpus/simple/struct.c3f");
+fn void struct_enum_bitstruct() @test {
+    test("struct_enum_bitstruct", "test/corpus/struct_enum_bitstruct.c3", "test/corpus/struct_enum_bitstruct_f.c3");
+}
+
+fn void if_statements() @test {
+    test("if_statements", "test/corpus/if_statements.c3", "test/corpus/if_statements_f.c3");
+}
+
+fn void for_statements() @test {
+    test("for_statements", "test/corpus/for_statements.c3", "test/corpus/for_statements_f.c3");
 }

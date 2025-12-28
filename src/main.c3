@@ -12,7 +12,7 @@ import std::core::mem;
 fn String? format_string(Allocator allocator, String string, Config config = default_config()) {
     @pool() {
         C3Fmt formatter = c3fmt::new(tmem, string, config);
-        formatter.format();
+        formatter.format()!;
 
         return formatter.output_code.copy_str(allocator);
     };
@@ -35,7 +35,7 @@ fn int main(String[] args)
 {
     if (args.len < 2)
     {
-        io::eprintn("Usage: formatter <source_file> [-debug]");
+        io::eprintn("Usage: c3fmt <source_file> [--debug]");
         return 1;
     }
 
@@ -56,11 +56,8 @@ fn int main(String[] args)
     }
 
     if(args.len < 3) {
-        io::printfn("---------------");
         io::printfn("%s", formatted);
-        io::printfn("---------------");
     }
-
 
 	return 0;
 }

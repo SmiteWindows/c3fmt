@@ -1,3 +1,24 @@
+/* TODOLIST:
+
+doc_comment
+
+// NOTE: Waiting for #50 in treesitter-c3
+global_declaration
+declaration
+declaration_stmt
+
+switch
+ct_switch
+
+wrapping
+*/
+
+/* KNOWN BUG
+    - Multiline comment (see the asm_block one)
+    - Comment as last line of a case: clause
+    - Comment following the colon of a case: clause
+    - I hate case:
+*/
 module c3fmt;
 
 import std::io;
@@ -39,31 +60,28 @@ fn C3Fmt new(Allocator allocator, String source_code, Config config) {
     return instance;
 }
 
-fn void C3Fmt.format(&self) {
+faultdef TREE_SITTER_ERROR;
+faultdef SOURCE_CODE_CONTAIN_ERROR;
+
+fn void? C3Fmt.format(&self) {
     TSParser*? parser = ts::parser::new_with_language(tree_sitter_c3::language());
 	defer (void)ts::parser_delete(parser);
 	if (catch excuse = parser) {
-		io::eprintfn("Error: could not create the parser");
-        io::eprintfn("Excuse: %s.", excuse);
-		return;
+		return TREE_SITTER_ERROR?;
 	}
 
     TSTree*? tree = ts::parser::parse_string(parser, null, self.source_code);
     defer (void)ts::tree_delete(tree);
     if (catch excuse = tree) {
-        io::eprintfn("Error: could not create the tree");
-        io::eprintfn("Excuse: %s.", excuse);
-		return;
+		return TREE_SITTER_ERROR?;
     }
 
     TSNode root = ts::tree_root_node(tree);
 
     if(ts::node_has_error(root)) {
-        io::eprintfn("Source code contains error(s).");
-        return;
+        return SOURCE_CODE_CONTAIN_ERROR?;
     }
 
-    assert(root.type() == "source_file");
     self.process_node(root);
     self.flush_line(false);
 
@@ -114,14 +132,15 @@ fn void C3Fmt.process_compound
             TSNode sibling = ts::node_named_child(node, i - 1);
             blank_line_amount = child.start_point_row() - sibling.end_point_row();
         }
-        blank_line_amount = min(blank_line_amount, max_blank_line_amount);
+        blank_line_amount = min(blank_line_amount, 3); // TODO
 
         for(int j = 0; j < blank_line_amount - 1; ++j) {
             self.newline();
         }
 
+        // TODO Same line comment
         if(child.is_comment() && blank_line_amount == 0) {
-            self.white_space();
+            //self.white_space();
         }
 
         self.process_node(child);
@@ -177,18 +196,57 @@ fn void C3Fmt.process_sequence(&self, TSNode node) {
     }
 }
 
-/* TODOLIST:
+fn void C3Fmt.process_case_stmt(&self, TSNode node) {
+    bool entered_stmt = false;
+    uint colon_id = 0;
 
-doc_comment
+    for(uint i = 0; i < ts::node_child_count(node); ++i) {
+        TSNode child = ts::node_child(node, i);
 
-// NOTE: Waiting for #50 in treesitter-c3
-global_declaration
-declaration
-declaration_stmt
+        if(!entered_stmt) {
+            if(i > 0 && child.type() != ":") {
+                self.white_space();
+            }
 
-switch
-ct_switch
-*/
+            if(child.is_comment()) {
+                self.append_node_str(child);
+                continue;
+            }
+
+            if(ts::node_is_named(child)) {
+                self.process_node(child);
+            } else {
+                self.append_node_str(child);
+            }
+
+            if(child.type() == ":") {
+                entered_stmt = true;
+                colon_id = i;
+                self.newline();
+                self.indent();
+            }
+        } else {
+            int blank_line_amount = 0;
+            if(i > colon_id + 1) {
+                TSNode sibling = ts::node_child(node, i - 1);
+                blank_line_amount = child.start_point_row() - sibling.end_point_row();
+            }
+            blank_line_amount = min(blank_line_amount, 3); // TODO one day
+
+            for(int j = 0; j < blank_line_amount - 1; ++j) {
+                self.newline();
+            }
+
+            if(child.is_comment() && blank_line_amount == 0) {
+                self.white_space();
+            }
+
+            self.process_node(child);
+        }
+    }
+
+    self.deindent();
+}
 
 <*
     Process a node of an unknown type
@@ -207,11 +265,18 @@ fn void C3Fmt.process_node(&self, TSNode node) {
         /* ======================================== */
         case "func_declaration":
             self.process_composite(node,
+                skip_space_type: { "func_param_list" },
                 append_newline: true
             );
         case "func_definition":
-            self.process_composite(node);
+            self.process_composite(node,
+                skip_space_type: { "func_param_list" },
+            );
         case "func_header":
+            self.process_composite(node,
+                skip_space_type: { "." },
+                skip_space_if_after: { "." },
+            );
         case "func_param_list":
             self.process_composite(node,
                 skip_space_type: { ")", "," },
@@ -261,7 +326,7 @@ fn void C3Fmt.process_node(&self, TSNode node) {
         case "struct_member_declaration":
             self.process_composite(node, append_newline: true);
         case "enum_declaration":
-            self.process_composite(node);
+            self.process_composite(node, append_newline: true);
         case "enum_spec":
             self.process_composite(node);
         case "enum_body":
@@ -468,7 +533,7 @@ fn void C3Fmt.process_node(&self, TSNode node) {
             String opening = self.config.brace_style == ALLMAN ? "\n{\n" : "{\n";
             self.process_compound(node,
                 opening_delimiter: opening,
-                closing_delimiter: "}\n",
+                closing_delimiter: "}",
                 increase_indent: true
             );
         case "var_stmt":
@@ -490,7 +555,7 @@ fn void C3Fmt.process_node(&self, TSNode node) {
             self.process_composite(node, append_newline: true);
         case "break_stmt":
             self.process_composite(node, append_newline: true);
-        case "next_case_stmt": // TO BE TESTED
+        case "nextcase_stmt": // TO BE TESTED
             self.process_composite(node, append_newline: true);
         case "continue_stmt":
             self.process_composite(node, append_newline: true);
@@ -501,14 +566,16 @@ fn void C3Fmt.process_node(&self, TSNode node) {
                 append_newline: true
             );
         case "for_stmt":
-            self.process_composite(node);
+            TSNode body = node.get_child_with_field("body");
+            self.process_composite(node, append_newline: body.type() == "compound_stmt");
         case "for_cond":
             self.process_composite(node,
                 skip_space_type: { ";", ")" },
                 skip_space_if_after: { "(" },
             );
         case "foreach_stmt":
-            self.process_composite(node);
+            TSNode body = node.get_child_with_field("body");
+            self.process_composite(node, append_newline: body.type() == "compound_stmt");
         case "foreach_cond":
             self.process_composite(node,
                 skip_space_type: { ",", ")" },
@@ -519,22 +586,22 @@ fn void C3Fmt.process_node(&self, TSNode node) {
                 skip_space_if_after: { "&" },
             );
         case "while_stmt":
-            self.process_composite(node);
+            TSNode body = node.get_child_with_field("body");
+            self.process_composite(node, append_newline: body.type() == "compound_stmt");
         case "do_stmt":
-            self.process_composite(node);
+            self.process_composite(node, append_newline: true);
         case "if_stmt":
-            self.process_composite(node);
-            if(!node.has_child_of_type("else_part")) {
-                self.newline();
-            }
+            TSNode body = node.get_child_with_field("body");
+            TSNode parent = ts::node_parent(node);
+            self.process_composite(node,
+                append_newline: body.type() == "compound_stmt" &&
+                                parent.type() != "else_part"
+            );
         case "else_part":
             if(self.config.else_on_new_line) {
                 self.newline();
             }
             self.process_composite(node);
-            if(!node.has_child_of_type("if_stmt")) {
-                self.newline();
-            }
         case "switch_stmt":
             self.process_composite(node, append_newline: true);
         case "switch_body":
@@ -545,7 +612,9 @@ fn void C3Fmt.process_node(&self, TSNode node) {
                 increase_indent: true
             );
         case "case_stmt": // TODO, this one will be a pain and will surely need its own work
+            self.process_case_stmt(node);
         case "default_stmt": // idem
+            self.process_case_stmt(node);
         case "case_range": // TODO
             self.append_node_str(node);
         case "asm_block_stmt": // TODO
@@ -609,7 +678,7 @@ fn void C3Fmt.process_node(&self, TSNode node) {
         /* ======================================== */
         /* COMMENTS                                 */
         /* ======================================== */
-        case "block_comment":
+        case "block_comment": // BUG multiline block
             self.append_node_str(node);
             self.newline();
         case "line_comment":

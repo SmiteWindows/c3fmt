@@ -22,6 +22,6 @@ fn Config default_config()
         .indent_width = 4,
 
         .brace_style = ALLMAN,
-        .else_on_new_line = true,
+        .else_on_new_line = true
     };
 }

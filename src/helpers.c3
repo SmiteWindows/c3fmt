@@ -13,6 +13,16 @@ fn uint TSNode.end_point_row(self) {
     return position.row;
 }
 
+fn TSNode TSNode.get_child_with_field(self, String field_name) {
+    for(uint i = 0; i < ts::node_child_count(self); ++i) {
+        if(ts::node_child(self, i).field_name() == field_name) {
+            return ts::node_child(self, i);
+        }
+    }
+
+    unreachable();
+}
+
 fn bool TSNode.has_child_of_type(self, String type) {
     for(uint i = 0; i < ts::node_child_count(self); ++i) {
         if(ts::node_child(self, i).type() == type) {
