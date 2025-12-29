@@ -31,9 +31,20 @@ struct Context {
     uint indent_level;
 }
 
+enum WrapPointKind {
+    ARG,
+    ARG_CLOSE_PAREN,
+    EQUAL,
+    FOR_COND
+}
+
+struct WrapPoint {
+    uint where;
+    WrapPointKind kind;
+}
 struct LineBuffer {
     DString text;
-    List{uint} wrap_points;
+    List{WrapPoint} wrap_points;
 }
 
 struct C3Fmt
@@ -83,9 +94,9 @@ fn void? C3Fmt.format(&self) {
     }
 
     self.process_node(root);
-    self.flush_line(false);
+    self.flush_line();
 
-    if(self.output_code[self.output_code.len() - 1] == '\n') {
+    while(self.output_code[self.output_code.len() - 1] == '\n') {
         self.output_code.chop(self.output_code.len() - 1);
     }
 
@@ -99,21 +110,21 @@ import std::io;
 import ts;
 
 <*
-    Can be used for things like compound_stmt, source_file, struct_body, enum_body etc...
-    Rules:
-    - Have some delimiters (optional) like curly braces
-        * These can either stick to a line currently being written, or start on a new line
-    - For each child of the block, write them and preserve blank lines in-between
-        * Can optionaly cap to x-amount of blank line
-        * Forces one statement per line
-        * Comments are not subject to the previous rule
-    - Can have an optional string to append after each line (e.g. a comma for enum)
+ Format a compound block" like node. Open and close with a specified string (that can contain line return(s)).
+ Will then format each subchild. If a child is a "statement" it's its role to append a newline.
+ This function will also preserve original blank lines between statements form source code. (can be capped)
+ This function will preserve same line comments.
+
+ @param node : "The processed node"
+ @param opening_delimiter : "A string to be appended before processing"
+ @param closing_delimiter : "A string to be appended after processing"
+ @param increase_indent : "If true, each children will be formatted one indent level up"
 *>
 fn void C3Fmt.process_compound
 (
     &self, TSNode node,
-    String opening_delimiter = "", String closing_delimiter = "",
-    uint max_blank_line_amount = 2, String child_delimiter = "", String pre_child_delimiter = "",
+    String opening_delimiter = "",
+    String closing_delimiter = "",
     bool increase_indent = false
 )
 {
@@ -125,14 +136,14 @@ fn void C3Fmt.process_compound
 
     for(uint i = 0; i < ts::node_named_child_count(node); ++i) {
         TSNode child = ts::node_named_child(node, i);
-        String type = child.type();
 
         int blank_line_amount = 0;
         if(i > 0) {
             TSNode sibling = ts::node_named_child(node, i - 1);
             blank_line_amount = child.start_point_row() - sibling.end_point_row();
         }
-        blank_line_amount = min(blank_line_amount, 3); // TODO
+        blank_line_amount = min(blank_line_amount,
+            self.config.max_blank_line_between_statements + 1);
 
         for(int j = 0; j < blank_line_amount - 1; ++j) {
             self.newline();
@@ -144,10 +155,6 @@ fn void C3Fmt.process_compound
         }
 
         self.process_node(child);
-
-        if(i < ts::node_named_child_count(node) - 1) {
-            self.append_str(child_delimiter);
-        }
     }
 
     if(increase_indent) {
@@ -157,13 +164,43 @@ fn void C3Fmt.process_compound
     self.append_str(closing_delimiter);
 }
 
-fn void C3Fmt.process_composite(&self, TSNode node, String[] skip_space_type = { ";" }, String[] skip_space_if_after = {}, bool append_newline = false) {
+<*
+ Format a "line" composed of several nodes. Append a white space between each node.
+
+ @param node : "The processed node"
+ @param skip_space_type : "Do not append a white space before these type"
+ @param skip_space_if_after : "Do not append a white space after these type"
+*>
+fn void C3Fmt.process_composite(&self, TSNode node,
+    String[] skip_space_type = { ";" },
+    String[] skip_space_if_after = {},
+    bool append_newline = false
+)
+{
     for(uint i = 0; i < ts::node_child_count(node); ++i) {
         TSNode child = ts::node_child(node, i);
         String type = child.type();
 
-        if(!skip_space_type.contains(type) && i > 0
-            && !skip_space_if_after.contains(ts::node_child(node, i - 1).type())) {
+        // WRAP POINTS (EXPERIMENTAL)
+        if((node.type() == "call_arg_list" && child.type() == "call_arg") ||
+           (node.type() == "func_param_list" && child.type() == "param")
+        )
+        {
+            self.insert_wrap_point(ARG);
+        }
+        if((node.type() == "call_arg_list" && i == ts::node_child_count(node) - 1) ||
+           (node.type() == "func_param_list" && i == ts::node_child_count(node) - 1)
+        )
+        {
+            assert(child.type() == ")");
+            self.insert_wrap_point(ARG_CLOSE_PAREN);
+        }
+
+        if(i > 0 &&
+           !skip_space_type.contains(type) &&
+           !skip_space_if_after.contains(ts::node_child(node, i - 1).type())
+        )
+        {
             self.white_space();
         }
 
@@ -184,6 +221,12 @@ fn void C3Fmt.process_composite(&self, TSNode node, String[] skip_space_type = {
     }
 }
 
+<*
+ Rawly format node sequentially, without appending any separator between them.
+ Useful for nodes like field accessor ("my_struct.my_field")
+
+ @param node : "The processed node"
+*>
 fn void C3Fmt.process_sequence(&self, TSNode node) {
     for(uint i = 0; i < ts::node_child_count(node); ++i) {
         TSNode child = ts::node_child(node, i);
@@ -231,14 +274,16 @@ fn void C3Fmt.process_case_stmt(&self, TSNode node) {
                 TSNode sibling = ts::node_child(node, i - 1);
                 blank_line_amount = child.start_point_row() - sibling.end_point_row();
             }
-            blank_line_amount = min(blank_line_amount, 3); // TODO one day
+            blank_line_amount = min(blank_line_amount,
+            self.config.max_blank_line_between_statements + 1);
 
             for(int j = 0; j < blank_line_amount - 1; ++j) {
                 self.newline();
             }
 
             if(child.is_comment() && blank_line_amount == 0) {
-                self.white_space();
+                // TODO
+                //self.white_space();
             }
 
             self.process_node(child);
@@ -556,7 +601,10 @@ fn void C3Fmt.process_node(&self, TSNode node) {
         case "break_stmt":
             self.process_composite(node, append_newline: true);
         case "nextcase_stmt": // TO BE TESTED
-            self.process_composite(node, append_newline: true);
+            self.process_composite(node,
+                skip_space_type: { ";", ":" },
+                append_newline: true
+            );
         case "continue_stmt":
             self.process_composite(node, append_newline: true);
         case "assert_stmt":

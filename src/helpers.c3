@@ -60,10 +60,10 @@ module c3fmt @private;
 import ts;
 
 fn void C3Fmt.append_char(&self, char c) {
+    self.line_buffer.text.append_char(c);
+
     if(c == '\n') {
         self.flush_line();
-    } else {
-        self.line_buffer.text.append_char(c);
     }
 }
 
@@ -85,39 +85,109 @@ fn void C3Fmt.newline(&self) {
     self.append_char('\n');
 }
 
-fn void C3Fmt.flush_line(&self, bool write_newline = true) => @pool() {
-    DString indented;
-    indented.tinit(64);
+fn void C3Fmt.insert_wrap_point(&self, WrapPointKind kind) {
+    self.line_buffer.wrap_points.push({ .where = (uint)self.line_buffer.text.len(), .kind = kind });
+}
 
-    if(self.line_buffer.text.str_view() != "") { // avoid outputting empty line with spaces
-        for(usz i = 0; i < self.context.indent_level; ++i) {
-            if(self.config.use_tabs) {
-                indented.append("\t");
-            } else {
-                for(usz j = 0; j < self.config.indent_width; ++j) {
-                    indented.append(" ");
-                }
+fn uint C3Fmt.length_in_document(&self, String str) {
+    uint count = 0;
+    foreach(char c : str) {
+        switch(c) {
+            case '\n':
+                break;
+            case '\t':
+                count += self.config.tab_size;
+
+            default:
+                count += 1;
+        }
+    }
+
+    return count;
+}
+
+import std::io;
+
+fn void C3Fmt.flush_line(&self, bool write_newline = true) => @pool() {
+    // Verify line is not empty / just line return
+    String raw_trimmed = self.line_buffer.text.str_view().trim(" ");
+    switch(raw_trimmed) {
+        case "":
+            self.reset_line_buffer();
+            return;
+        case "\n":
+            self.reset_line_buffer();
+            self.output_code.append("\n");
+            return;
+    }
+
+    DString indent = dstring::temp();
+    for(usz i = 0; i < self.context.indent_level; ++i) {
+        if(self.config.use_tabs) {
+            indent.append("\t");
+        } else {
+            for(usz j = 0; j < self.config.indent_width; ++j) {
+                indent.append(" ");
             }
         }
     }
 
-    DString final = indented.tconcat(self.line_buffer.text);
+    uint total_len = self.length_in_document(indent.str_view()) +
+        self.length_in_document(self.line_buffer.text.str_view());
 
-    // Trim
-    while(final.len() != 0
-        && (final[final.len() - 1] == ' ' || final[final.len() - 1] == '\t'))
-    {
-        final.chop(final.len() - 1);
+    // Wrap line
+    if(self.config.max_line_length > 0 && total_len > self.config.max_line_length) {
+        bool has_arg_wp = false;
+        foreach(WrapPoint wp : self.line_buffer.wrap_points) {
+            if(wp.kind == ARG) {
+                has_arg_wp = true;
+            }
+        }
+
+        if(has_arg_wp) {
+            DString line = self.line_buffer.text.copy(tmem);
+            usz offset = 0;
+            foreach(WrapPoint wp : self.line_buffer.wrap_points) {
+                if(wp.kind == ARG) {
+                    // remove white space if there is one
+                    if(line[wp.where + offset] == ' ') {
+                        line.delete(wp.where + offset);
+                    }
+
+                    line.insert_at(wp.where + offset, "\n");
+                    offset += 1;
+                    for(usz j = 0; j < self.config.indent_width; ++j) {
+                        line.insert_at(wp.where + offset, " ");
+                        offset += 1;
+                    }
+                }
+                if(wp.kind == ARG_CLOSE_PAREN) {
+                    line.insert_at(wp.where + offset - 1, "\n");
+                    offset += 1;
+                }
+
+            }
+            self.reset_line_buffer();
+            self.append_str(line.str_view());
+            return;
+        }
+
     }
 
-    self.output_code.append(final);
-    if(write_newline) {
-        self.output_code.append_char('\n');
+    DString final = indent.tconcat(self.line_buffer.text);
+    bool has_newline = final[final.len() - 1] == '\n';
+
+    self.output_code.append(final.str_view().trim_right());
+    if(has_newline) {
+        self.output_code.append("\n");
     }
 
+    self.reset_line_buffer();
+}
+
+fn void C3Fmt.reset_line_buffer (&self) {
     self.line_buffer.text.free();
     self.line_buffer.wrap_points.free();
-
     self.line_buffer.text.init(mem, 64);
     self.line_buffer.wrap_points.init(mem);
 }

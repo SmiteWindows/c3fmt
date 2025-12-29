@@ -48,3 +48,11 @@ fn void if_statements() @test {
 fn void for_statements() @test {
     test("for_statements", "test/corpus/for_statements.c3", "test/corpus/for_statements_f.c3");
 }
+
+fn void switch_statements() @test {
+    test("switch_statements", "test/corpus/switch_statements.c3", "test/corpus/switch_statements_f.c3");
+}
+
+fn void wrapping() @test {
+    test("wrapping", "test/corpus/wrapping.c3", "test/corpus/wrapping_f.c3");
+}
