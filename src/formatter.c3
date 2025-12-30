@@ -10,8 +10,8 @@ declaration_stmt
 switch
 ct_switch
 
-wrapping : 
-    go fmt like wrapping 
+wrapping :
+    go fmt like wrapping
     ie we have a stream of token (= the line being built) that has some breakpoints (BP)
     these BP are actually grouped (each BP of a call expr, each BP of a function
     etc...)
@@ -415,28 +415,56 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
                 skip_space_type: { ",", ";" },
                 append_newline: true
             );
-        case "path_ident": // TODO
-        case "path_type_ident": // TODO
-            self.buf.text(node.get_text(self.source_code));
+        case "path_ident":
+            self.process_sequence(node);
+        case "module_resolution":
+            self.process_sequence(node);
+        case "path_type_ident":
+            self.process_sequence(node);
+        case "path_at_type_ident":
+            self.process_sequence(node);
         case "typedef_declaration":
             self.process_composite(node,
                 append_newline: true
             );
-        case "alias_declaration": // TO BE TESTED
+        case "alias_declaration":
             self.process_composite(node,
                 append_newline: true
             );
         case "func_signature":
-            self.process_composite(node);
+            self.process_composite(node,
+                skip_space_type: { "func_param_list" }
+            );
         case "var_declaration":
             self.process_composite(node);
 
         /* ======================================== */
         /* EXPRESSIONS                              */
         /* ======================================== */
-        case "call_inline_attributes": // TODO what's the difference with "attributes" anyway ?
+        case "call_inline_attributes":
+            self.process_composite(node);
         case "attributes":
             self.process_composite(node);
+        case "attribute":
+            self.process_sequence(node);
+        case "attribute_arg_list":
+            self.process_composite(node,
+                skip_space_type: { ",", ")" },
+                skip_space_if_after: { "(" },
+            );
+        case "attribute_arg":
+            self.process_sequence(node);
+        case "generic_type_ident":
+            self.process_sequence(node);
+        case "generic_arg_list":
+            self.process_composite(node,
+                skip_space_type: { ",", "}" },
+                skip_space_if_after: { "{" },
+            );
+        case "access_ident":
+            self.process_sequence(node);
+        case "access_eval":
+            self.process_sequence(node);
         case "type":
             self.process_sequence(node);
         case "identifier_list":
@@ -478,7 +506,10 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
         case "call_args":
             self.process_composite(node);
         case "call_arg":
-            self.buf.text(node.get_text(self.source_code)); // TODO
+            self.process_composite(node,
+                skip_space_type: { ":", "range_expr", "[", "]" },
+                skip_space_if_after: { "[", "..." },
+            );
         case "ternary_expr":
             self.process_composite(node);
         case "elvis_orelse_expr":
@@ -499,16 +530,16 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
                 skip_space_type: { ")" },
                 skip_space_if_after: { "(" },
             );
-        case "initializer_list": // TO BE TESTED
+        case "initializer_list":
             self.process_composite(node,
                 skip_space_type: { "," },
             );
-        case "comma_decl_or_expr": // TO BE TESTED
+        case "comma_decl_or_expr":
             self.process_composite(node,
                 skip_space_type: { ",", ")" },
                 skip_space_if_after: { "(" }
             );
-        case "interface_impl_list": // TO BE TESTED
+        case "interface_impl_list":
             self.process_composite(node,
                 skip_space_type: { ",", ")" },
                 skip_space_if_after: { "(" }
@@ -527,20 +558,24 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
                     skip_space_type: { "}", "," },
                     skip_space_if_after: { "{" },
                 );
-        case "initializer_element": // TO BE TESTED
+        case "initializer_element":
             self.process_composite(node);
-        case "param_path": // idk what this is, can we do { .x .y = 34 }??? why is
+        case "param_path": // TODO idk what this is, can we do { .x .y = 34 }??? why is
         // it a repeat(param_path_element)...
             self.process_composite(node);
+        case "typed_initializer_list":
+            self.process_composite(node,
+                skip_space_type: { ")" },
+                skip_space_if_after: { "(" },
+            );
         case "param_path_element": // TO BE TESTED
-        case "typed_initializer_list": // TO BE TESTED
         case "unary_expr":
         case "update_expr":
         case "optional_expr":
-        case "cast_expr": // TO BE TESTED + configure it
-        case "field_expr": // TO BE TESTED
-        case "subscript_expr": // TO BE TESTED
-        case "range_expr": // TO BE TESTED + maybe have space between .. or : ?
+        case "cast_expr":
+        case "field_expr":
+        case "subscript_expr":
+        case "range_expr":
         case "rethrow_expr": // TO BE TESTED
         case "type_access_expr":
             self.process_sequence(node);
@@ -586,7 +621,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
             self.process_composite(node, append_newline: true);
         case "break_stmt":
             self.process_composite(node, append_newline: true);
-        case "nextcase_stmt": // TO BE TESTED
+        case "nextcase_stmt":
             self.process_composite(node,
                 skip_space_type: { ";", ":" },
                 append_newline: true
@@ -654,14 +689,15 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
             self.process_compound(node);
             self.buf.dedent();
             self.buf.text("}");
-        case "case_stmt": // TODO, this one will be a pain and will surely need its own work
+        case "case_stmt":
             self.process_case_stmt(node);
         case "default_stmt": // idem
             self.process_case_stmt(node);
-        case "case_range": // TODO
-            self.buf.text(node.get_text(self.source_code));
+        case "case_range":
+            self.process_sequence(node);
         case "asm_block_stmt": // TODO
             self.buf.text(node.get_text(self.source_code));
+            self.buf.newline();
         case "ct_assert_stmt":
             self.process_composite(node,
                 skip_space_type: { ";", ")", "," },
@@ -713,10 +749,6 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
         case "ct_switch_stmt":
             self.buf.text(node.get_text(self.source_code)); // TODO, need special handling...
             self.buf.newline();
-        /* todo
-
-        asm_stmt
-        */
 
         /* ======================================== */
         /* COMMENTS                                 */
@@ -761,11 +793,9 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
         case "false":
         case "null":
         case "default": // maybe not necesarry idk waiting for switch support.
-        case "attribute": // TODO (parenthesis after)
-        case "generic_type_ident": // TO BE TESTED / TODO
-        case "access_ident": // TODO idk
         case "base_type_name":
         case "flat_path": // TODO don't really know what this is
+        case "overload_operator":
             self.buf.text(node.get_text(self.source_code));
 
         case "bytes_expr": // TODO idk what this is, a space separated list of bytes_literal ?
