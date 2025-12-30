@@ -5,7 +5,7 @@ fn void main () {
             switch (i)
             {
                 case 1:
-                    doSomething();
+                    doSomething(); // do
                     nextcase 3; // Jump to case 3
                 case 2:
                     doSomethingElse();

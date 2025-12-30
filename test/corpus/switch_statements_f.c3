@@ -6,18 +6,15 @@ fn void main()
             switch (i)
             {
                 case 1:
-                    doSomething();
-                    nextcase 3;
-                // Jump to case 3
+                    doSomething(); // do
+                    nextcase 3; // Jump to case 3
                 case 2:
                     doSomethingElse();
                 case 3:
-                    nextcase rand();
-                // Jump to random case
+                    nextcase rand(); // Jump to random case
                 default:
                     io::printn("Ended");
-                    nextcase MAIN: BAR;
-                // Jump to outer (MAIN) switch
+                    nextcase MAIN: BAR; // Jump to outer (MAIN) switch
             }
         case BAR:
             io::printn("BAR");
@@ -39,8 +36,7 @@ fn void main()
     {
         case 1:
             doSomething();
-            nextcase;
-        // Jumps to case 2
+            nextcase; // Jumps to case 2
         case 2:
             doSomethingElse();
     }
@@ -80,8 +76,7 @@ fn void demo_enum(Height h)
     switch (h)
     {
         case LOW:
-            break;
-        // Explicit break required, since switches can't be empty.
+            break; // Explicit break required, since switches can't be empty.
         case MEDIUM:
             io::printn("Medium");
         case HIGH:

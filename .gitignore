@@ -2,3 +2,4 @@ build/
 .DS_Store
 .vscode/
 src-formatted/
+scratch.c3

@@ -21,7 +21,7 @@ wrapping :
 
 /* KNOWN BUG
     - Multiline comment (see the asm_block one)
-    - Comment as last line of a case: clause
+    - Comment as last line of a case: clause (see l:59 switch_statements_f.c3)
     - Comment following the colon of a case: clause
     - I hate case:
 */
@@ -119,10 +119,20 @@ fn void C3Fmt.process_compound(&self, TSNode node)
             self.buf.newline();
         }
 
-        // TODO Same line comment
-        if(child.is_comment() && blank_line_amount == 0) {
-
-            //self.white_space();
+        if(child.is_comment() && blank_line_amount == 0 && i > 0) {
+            if(self.buf.last()!!.kind == DEDENT) {
+                // this is a lost commment after a case stmt
+                assert(ts::node_named_child(node, i - 1).type() == "case_stmt"
+                || ts::node_named_child(node, i - 1).type() == "default_stmt");
+                self.buf.pop()!!; // gobble DEDENT
+                self.buf.pop()!!; // gobble NEWLINE
+                self.buf.space();
+                self.process_node(child, true);
+                self.buf.dedent(); // re-push dedent
+                continue;
+            }
+            self.buf.gobble_last_newline();
+            self.buf.space();
         }
 
         self.process_node(child, true);
@@ -165,17 +175,27 @@ fn void C3Fmt.process_composite(&self, TSNode node,
         }
 
         if(child.is_comment()) {
-            // if (!same_line) gobble space (rare)
-            self.buf.text(child.get_text(self.source_code));
-            self.buf.newline();
-            // TODO
-            continue;
-        }
-
-        if(ts::node_is_named(child)) {
-            self.process_node(child);
+            if(child.type() == "block_comment") {
+                self.process_block_comment(child);
+            }
+            if(child.type() == "line_comment") {
+                // for instance:
+                // if (aazeae) // THE COMMENT
+                // { ... }
+                // this force Allman brace style, it's very bad
+                self.buf.text("/*");
+                self.buf.space();
+                String comment_content = child.get_text(self.source_code).strip("//").trim();
+                self.buf.text(comment_content);
+                self.buf.space();
+                self.buf.text("*/");
+            }
         } else {
-            self.buf.text(child.get_text(self.source_code));
+            if(ts::node_is_named(child)) {
+                self.process_node(child);
+            } else {
+                self.buf.text(child.get_text(self.source_code));
+            }
         }
     }
 
@@ -194,10 +214,15 @@ fn void C3Fmt.process_sequence(&self, TSNode node) {
     for(uint i = 0; i < ts::node_child_count(node); ++i) {
         TSNode child = ts::node_child(node, i);
 
-        if(ts::node_is_named(child)) {
-            self.process_node(child);
+        if(child.is_comment()) {
+            assert(child.type() == "block_comment");
+            self.process_block_comment(child);
         } else {
-            self.buf.text(child.get_text(self.source_code));
+            if(ts::node_is_named(child)) {
+                self.process_node(child);
+            } else {
+                self.buf.text(child.get_text(self.source_code));
+            }
         }
     }
 }
@@ -215,15 +240,14 @@ fn void C3Fmt.process_case_stmt(&self, TSNode node) {
             }
 
             if(child.is_comment()) {
-                self.buf.text(child.get_text(self.source_code));
-                self.buf.newline();
-                continue;
-            }
-
-            if(ts::node_is_named(child)) {
-                self.process_node(child);
+                assert(child.type() == "block_comment");
+                self.process_block_comment(child);
             } else {
-                self.buf.text(child.get_text(self.source_code));
+                if(ts::node_is_named(child)) {
+                    self.process_node(child);
+                } else {
+                    self.buf.text(child.get_text(self.source_code));
+                }
             }
 
             if(child.type() == ":") {
@@ -245,9 +269,9 @@ fn void C3Fmt.process_case_stmt(&self, TSNode node) {
                 self.buf.newline();
             }
 
-            if(child.is_comment() && blank_line_amount == 0) {
-                // TODO
-                //self.white_space();
+            if(child.is_comment() && blank_line_amount == 0 && i > colon_id + 1) {
+                self.buf.gobble_last_newline();
+                self.buf.space();
             }
 
             self.process_node(child);
@@ -257,6 +281,12 @@ fn void C3Fmt.process_case_stmt(&self, TSNode node) {
     self.buf.dedent();
 }
 
+fn void C3Fmt.process_block_comment(&self, TSNode node) {
+    TSNode content = ts::node_named_child(node, 0);
+    self.buf.text("/*");
+    self.buf.text(content.get_text(self.source_code));
+    self.buf.text("*/");
+}
 <*
     Process a node of an unknown type
 *>
@@ -465,6 +495,8 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
             self.process_sequence(node);
         case "access_eval":
             self.process_sequence(node);
+        case "flat_path":
+            self.process_sequence(node);
         case "type":
             self.process_sequence(node);
         case "identifier_list":
@@ -605,7 +637,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
             self.process_composite(node, append_newline: true);
         case "expr_stmt":
             self.process_composite(node,
-                skip_space_type: { ";", ",", ")" },
+                skip_space_type: { ";", ",", ")", "(" },
                 skip_space_if_after: { "(" },
                 append_newline: true
             );
@@ -754,7 +786,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
         /* COMMENTS                                 */
         /* ======================================== */
         case "block_comment": // BUG multiline block
-            self.buf.text(node.get_text(self.source_code));
+            self.process_block_comment(node);
             self.buf.newline();
         case "line_comment":
             self.buf.text(node.get_text(self.source_code));
@@ -794,7 +826,6 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
         case "null":
         case "default": // maybe not necesarry idk waiting for switch support.
         case "base_type_name":
-        case "flat_path": // TODO don't really know what this is
         case "overload_operator":
             self.buf.text(node.get_text(self.source_code));
 
