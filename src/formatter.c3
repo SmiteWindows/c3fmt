@@ -546,16 +546,26 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
         case "enum_constant":
             self.process_composite(node);
 
+            bool has_comma = false;
             TSNode parent = ts::node_parent(node);
-            TSNode last_enum_const;
-            for(uint i = 0; i < ts::node_named_child_count(parent); ++i) {
-                TSNode child = ts::node_named_child(parent, i);
-                if(child.type() == "enum_constant") {
-                    last_enum_const = child;
+            bool start_searching;
+            for(uint i = 0; i < ts::node_child_count(parent); ++i) {
+                TSNode child = ts::node_child(parent, i);
+                if(ts::node_eq(child, node)) {
+                    start_searching = true;
+                }
+                if(start_searching) {
+                    if(child.type() == ",") {
+                        has_comma = true;
+                        break;
+                    }
+                    if(child.type() == "}") {
+                        break;
+                    }
                 }
             }
 
-            if(!ts::node_eq(node, last_enum_const) || self.config.force_comma_after_last_enum_constant) {
+            if(has_comma) {
                 self.buf.text(",");
             }
 

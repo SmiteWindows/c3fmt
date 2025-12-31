@@ -62,13 +62,13 @@ enum KeyCode : const CInt
     SPACE = 32,
     EXCLAIM,
     QUOTEDBL,
-    HASH
+    HASH,
 }
 
 enum ConstInline : const inline String
 {
     A = "Hello",
-    B = "World"
+    B = "World",
 }
 
 State current_state = WAITING;

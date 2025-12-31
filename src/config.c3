@@ -15,8 +15,6 @@ struct Config {
 
     BraceStyle brace_style;
     bool else_on_new_line;
-
-    bool force_comma_after_last_enum_constant;
 }
 
 fn Config default_config()
@@ -31,7 +29,5 @@ fn Config default_config()
 
         .brace_style = ALLMAN,
         .else_on_new_line = true,
-
-        .force_comma_after_last_enum_constant = false
     };
 }

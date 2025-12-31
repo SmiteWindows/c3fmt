@@ -65,7 +65,6 @@ fn bool String[].contains(&self, String str) {
 import std::io;
 
 fn bool same_semantic(TSNode a, TSNode b) {
-    // TODO c3fmt can remove trailing commas
     if(a.type() != b.type() && !(a.is_comment() && b.is_comment())) {
         return false;
     }
