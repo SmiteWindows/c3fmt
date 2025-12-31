@@ -75,8 +75,9 @@ fn int main(String[] args)
     }
 
     if(version_asked) {
-        io::printfn("c3fmt version:     \t0.0.1");
+        io::printfn("c3fmt version:     \t0.1.0");
         io::printfn("target c3c version:\t0.7.8");
+        return 0;
     }
 
     if(arg_last_parsed == args.len) {
