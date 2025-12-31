@@ -201,6 +201,8 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level) {
         foreach(token : tokens) {
             // Before implementing a better solution,
             // let's just unwrap all points.
+            // but i would like to implement "groups"
+            // with delimiter like WP_BEGIN, WP_END
             if(token.kind == WRAP_POINT && token.wrap_point.mode == BEFORE) {
                 while(self.dstr_buf[self.dstr_buf.len() - 1] == ' ') {
                     self.dstr_buf.chop(self.dstr_buf.len() - 1);

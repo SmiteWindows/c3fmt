@@ -27,9 +27,6 @@ import c3fmt::printer;
 import opt;
 
 fn String? read_file(String file_name) {
-    File fh = file::open(file_name, "rb")!;
-    defer (void)fh.close();
-
     String content = (String)file::load(mem, file_name)!;
     return content;
 }
@@ -80,13 +77,36 @@ fn int main(String[] args)
         return 0;
     }
 
-    if(arg_last_parsed == args.len) {
-        io::printfn("No input file provided.");
-        return 1;
+    if(cli_options.stdin) {
+        DString read = dstring::new(mem);
+        defer read.free();
+        while(true) {
+            char[] buffer = mem::new_array(char, 512);
+            defer free(buffer);
+
+            usz s = io::stdin().read(buffer)!!;
+
+            if(s == 0) {
+                break;
+            }
+
+            read.append((String)buffer[:s]);
+        }
+
+        String? formatted = c3fmt::format_string(mem, read.str_view());
+        defer (void)formatted.free(mem);
+        if (catch excuse = formatted) {
+            io::eprintfn("Error: could not format source code.");
+            io::eprintfn("Excuse: %s.", excuse);
+            return 1;
+        }
+
+        io::printfn("%s", formatted);
+        return 0;
     }
 
-    if(cli_options.stdin) {
-        io::printfn("Read from stdin is not yet supported.");
+    if(arg_last_parsed == args.len) {
+        io::printfn("No input file provided.");
         return 1;
     }
 
