@@ -11,17 +11,20 @@ enum TokenKind {
 }
 
 enum WrapMode {
-    NONE,
     BEFORE,
     AFTER
+}
+
+struct WrapPoint {
+    WrapMode mode;
+    usz indent;
 }
 
 struct Token {
     TokenKind kind;
     String str;
 
-    WrapMode wrap_mode;
-    usz wrap_indent;
+    WrapPoint wrap_point;
 }
 
 fn Token eof () {
@@ -48,11 +51,10 @@ fn Token text(String text) {
     return (Token) { .kind = TEXT, .str = text };
 }
 
-fn Token wrap_point(WrapMode wrap_mode, usz wrap_indent = 1) {
+fn Token wrap_point(WrapPoint wrap_point) {
     return (Token) {
         .kind = WRAP_POINT,
-        .wrap_mode = wrap_mode,
-        .wrap_indent = wrap_indent
+        .wrap_point = wrap_point
     };
 }
 
@@ -199,14 +201,18 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level) {
         foreach(token : tokens) {
             // Before implementing a better solution,
             // let's just unwrap all points.
-            if(token.wrap_mode == BEFORE) {
-                self.dstr_buf.append('\n');
-                for(usz i = 0; i < token.wrap_indent; ++i) {
-                    self.dstr_buf.append('\t');
+            if(token.kind == WRAP_POINT && token.wrap_point.mode == BEFORE) {
+                while(self.dstr_buf[self.dstr_buf.len() - 1] == ' ') {
+                    self.dstr_buf.chop(self.dstr_buf.len() - 1);
                 }
-            }
 
-            self.dstr_buf.append(token.print());
+                self.dstr_buf.append('\n');
+                for(usz i = 0; i < indent_level + token.wrap_point.indent; ++i) {
+                    self.print_indent();
+                }
+            } else {
+                self.dstr_buf.append(token.print());
+            }
         }
     } else {
         foreach(token : tokens) {
@@ -239,8 +245,8 @@ fn void TokenBuffer.text(&self, String text) {
     self.push(token::text(text));
 }
 
-fn void TokenBuffer.wrap_point(&self, WrapMode wrap_mode, usz wrap_indent = 1) {
-    self.push(token::wrap_point(wrap_mode, wrap_indent));
+fn void TokenBuffer.wrap_point(&self, WrapPoint wrap_point) {
+    self.push(token::wrap_point(wrap_point));
 }
 
 fn bool TokenBuffer.gobble_last_newline(&self) {

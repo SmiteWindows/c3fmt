@@ -5,7 +5,7 @@ fn int main(
 )
 {
     main(
-        a__long__arg: "a very long string that will go after 80 words",
+        a__long__arg: "a very long string that will go beyond 80 words",
         a__long__arg: "",
         30
     );
@@ -15,4 +15,7 @@ fn int Termios.setAttr(
     &self,
     Fd fd,
     Tcactions optional_actions
-) @deprecated => self.set_attr(fd, optional_actions);
+) @deprecated => self.set_attr(
+    fd,
+    optional_actions
+);

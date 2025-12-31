@@ -16,7 +16,7 @@ macro test($name, $input_path, $solution_path) {
         if(solution[i] != formatted[i]) {
             io::eprintfn("For context, here is the output :");
             io::eprintfn("%s", formatted);
-            io::eprintfn("Character mismatch '%c' vs '%c' on line %s.", solution[i], formatted[i], line + 1);
+            io::eprintfn("Character mismatch expected:'%c' got:'%c' on line %s.", solution[i], formatted[i], line + 1);
 
             input.free(mem);
             solution.free(mem);
@@ -53,6 +53,6 @@ fn void switch_statements() @test {
     test("switch_statements", "test/corpus/switch_statements.c3", "test/corpus/switch_statements_f.c3");
 }
 
-// fn void wrapping() @test {
-//     test("wrapping", "test/corpus/wrapping.c3", "test/corpus/wrapping_f.c3");
-// }
+fn void wrapping() @test {
+    test("wrapping", "test/corpus/wrapping.c3", "test/corpus/wrapping_f.c3");
+}

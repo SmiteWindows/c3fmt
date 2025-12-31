@@ -128,23 +128,27 @@ fn void C3Fmt.process_compound(&self, TSNode node)
     }
 }
 
+faultdef NO_WRAP;
+alias AddWrapPointFn = fn WrapPoint?(String type);
 <*
  Format a "line" composed of several nodes.
  Append a white space between each node.
+
+ NOTE: I really like to idea to provide some function argument so special
+ note can hook into the logic and add what they want, like it's done for
+ wrap_point
 
  @param node : "The processed node"
  @param skip_space_type : "Do not append a white space before these type"
  @param skip_space_if_after : "Do not append a white space after these type"
  @param append_newline : "If true, will append a newline"
- @param wrap_point_before : "Will add a wrap point before the specified tokens"
- @param wrap_point_after : "Will add a wrap point after the specified tokens"
+ @param add_wrap_point_fn: "Allow to set wrap point on specific children"
 *>
 fn void C3Fmt.process_composite(&self, TSNode node,
     String[] skip_space_type = { ";" },
     String[] skip_space_if_after = {},
     bool append_newline = false,
-    String[] wrap_point_before = {},
-    String[] wrap_point_after = {},
+    AddWrapPointFn add_wrap_point_fn = null
 )
 {
     for(uint i = 0; i < ts::node_child_count(node); ++i) {
@@ -159,11 +163,11 @@ fn void C3Fmt.process_composite(&self, TSNode node,
             self.buf.space();
         }
 
-        if(wrap_point_before.contains(type)) {
-            self.buf.wrap_point(BEFORE);
-        }
-        if(wrap_point_after.contains(type)) {
-            self.buf.wrap_point(AFTER);
+        if(add_wrap_point_fn) {
+            WrapPoint? wrap_point = add_wrap_point_fn(type);
+            if(try wrap_point) {
+                self.buf.wrap_point(wrap_point);
+            }
         }
 
         if(child.is_comment()) {
@@ -468,7 +472,16 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
             self.process_composite(node,
                 skip_space_type: { ")", "," },
                 skip_space_if_after: { "(" },
-                wrap_point_before: { "param", ")" },
+                add_wrap_point_fn: fn (String type) {
+                    switch (type) {
+                        case "param":
+                            return { .mode = BEFORE, .indent = 1};
+                        case ")":
+                            return { .mode = BEFORE, .indent = 0};
+                        default:
+                            return NO_WRAP?;
+                    }
+                }
             );
         case "param":
             self.process_composite(node,
@@ -491,7 +504,16 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
             self.process_composite(node,
                 skip_space_type: { ")", ",", ";" },
                 skip_space_if_after: { "(" },
-                wrap_point_before: { "param", "trailing_block_param", ")" },
+                add_wrap_point_fn: fn (String type) {
+                    switch (type) {
+                        case "param":
+                            return { .mode = BEFORE, .indent = 1};
+                        case ")":
+                            return { .mode = BEFORE, .indent = 0};
+                        default:
+                            return NO_WRAP?;
+                    }
+                }
             );
         case "trailing_block_param":
             self.process_sequence(node);
@@ -507,8 +529,10 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
                     self.buf.dedent();
                     self.buf.text("}");
                 case "implies_body":
+                    self.buf.space();
                     self.process_composite(node, append_newline: true);
                 case "=>":
+                    self.buf.space();
                     self.process_composite(node, append_newline: false);
             }
         case "implies_body":
@@ -717,6 +741,16 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
             self.process_composite(node,
                 skip_space_type: { ")", "," },
                 skip_space_if_after: { "(" },
+                add_wrap_point_fn: fn (String type) {
+                    switch(type) {
+                        case ")":
+                            return { .mode = BEFORE, .indent = 0};
+                        case "call_arg":
+                            return { .mode = BEFORE, .indent = 1};
+                        default:
+                            return NO_WRAP?;
+                    }
+                }
             );
         case "call_args":
             self.process_composite(node);
