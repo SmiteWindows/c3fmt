@@ -1,10 +1,10 @@
 import c3fmt::executable;
 import std::io;
 
-macro test($name, $input_path, $solution_path) {
+macro test($name, $input_path, $solution_path, Config config = c3fmt::default_config()) {
     String input = c3fmt::executable::read_file($input_path)!!;
     String solution = c3fmt::executable::read_file($solution_path)!!;
-    String formatted = c3fmt::format_string(mem, input, check_semantic: true)!!;
+    String formatted = c3fmt::format_string(mem, input, config, check_semantic: true)!!;
 
     int len = solution.len;
     if(formatted.len != len) {
@@ -54,5 +54,7 @@ fn void switch_statements() @test {
 }
 
 fn void wrapping() @test {
-    test("wrapping", "test/corpus/wrapping.c3", "test/corpus/wrapping_f.c3");
+    Config conf = c3fmt::default_config();
+    conf.max_line_length = 80;
+    test("wrapping", "test/corpus/wrapping.c3", "test/corpus/wrapping_f.c3", conf);
 }
