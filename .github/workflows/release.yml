@@ -50,6 +50,7 @@ jobs:
 
       - name: Build c3fmt
         if: runner.os == 'Windows'
+        shell: sh
         run: ./c3/c3c.exe build -L $LD_LIBRARY_PATH
 
       - name: Upload artefact
