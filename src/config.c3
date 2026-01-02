@@ -20,7 +20,7 @@ struct Config {
 fn Config default_config()
 {
     return {
-        .use_tabs = false,
+        .use_tabs = true,
         .tab_size = 4,
         .indent_width = 4,
 
