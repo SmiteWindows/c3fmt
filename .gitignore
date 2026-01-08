@@ -3,3 +3,4 @@ build/
 .vscode/
 src-formatted/
 scratch.c3
+notes.md
