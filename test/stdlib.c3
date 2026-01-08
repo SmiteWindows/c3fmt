@@ -42,12 +42,11 @@ fn Path? convert_path(Path input, Allocator allocator)
     return path::new(allocator, d.str_view(), input.env);
 }
 
-
 fn bool? process_source_file (Path path, bool is_dir, any data) {
     if(!is_dir) {
         io::printfn("%s", path);
 
-        String input = c3fmt::executable::read_file(path.str_view())!!;
+        String input = (String)file::load(mem, path.str_view())!!;
         defer input.free(mem);
         String? formatted = c3fmt::format_string(mem, input, check_semantic: true);
         defer (void)formatted.free(mem);

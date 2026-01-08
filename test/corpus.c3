@@ -2,8 +2,8 @@ import c3fmt::executable;
 import std::io;
 
 macro test($name, $input_path, $solution_path, Config config = c3fmt::default_config()) {
-    String input = c3fmt::executable::read_file($input_path)!!;
-    String solution = c3fmt::executable::read_file($solution_path)!!;
+    String input = (String)file::load(mem, $input_path)!!;
+    String solution = (String)file::load(mem, $solution_path)!!;
     String formatted = c3fmt::format_string(mem, input, config, check_semantic: true)!!;
 
     int len = solution.len;
