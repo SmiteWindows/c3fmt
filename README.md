@@ -40,6 +40,17 @@ You can look at [.c3fmt](.c3fmt) for the default configuration.
 Run `c3c build` to build `c3fmt`.
 
 The only dependency is the [tree-sitter](https://github.com/tree-sitter/tree-sitter) sdk.
+
+## Planned features / wishlist
+
+- Align consecutive assignments / declaration / comments.
+- Wrapping indent option. (ContinuationIndentWidth)
+- Align wrapped items.
+- Space before <...> options.
+- Import sorting
+- Space before trailing comment
+- Pointer alignment ? (kind of a pain and I think right alignment is heretic)
+
 ## About the parser
 
 `c3fmt` use tree-sitter to generate a tree that is then walked down.
