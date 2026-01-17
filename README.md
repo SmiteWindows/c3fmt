@@ -43,6 +43,7 @@ The only dependency is the [tree-sitter](https://github.com/tree-sitter/tree-sit
 
 ## Planned features / wishlist
 
+- Code wrapping (current breaks with nested constructions).
 - Align consecutive assignments / declaration / comments.
 - Wrapping indent option. (ContinuationIndentWidth)
 - Align wrapped items.
