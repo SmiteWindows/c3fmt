@@ -544,6 +544,141 @@ fn void C3Fmt.process_ct_case_stmt(&self, TSNode node)
 	}
 }
 
+fn void C3Fmt.process_asm_block_stmt(&self, TSNode node) {
+	bool in_scope = false;
+	uint in_scope_id;
+	for (uint i = 0; i < ts::node_child_count(node); ++i)
+	{
+		TSNode child = ts::node_child(node, i);
+		String type = child.type();
+
+		if(!in_scope) {
+			String[] skip_space_type = { "(", ")", ";" };
+			String[] skip_space_if_after = { "(" };
+			if (i > 0 && !skip_space_type.contains(type) && !skip_space_if_after.contains(ts::node_child(node, i - 1).type()))
+			{
+				self.buf.space();
+			}
+
+			if (child.is_comment())
+			{
+				if (child.type() == "block_comment")
+				{
+					self.process_block_comment(child);
+				}
+				if (child.type() == "line_comment")
+				{
+					if (i == ts::node_child_count(node) - 1)
+					{
+						io::eprintfn("Found an inline comment as last child?");
+						unreachable();
+					}
+					self.buf.inline_comment(self.extract_comment_string(child));
+				}
+			}
+			else
+			{
+				if (ts::node_is_named(child))
+				{
+					self.process_node(child);
+				}
+				else
+				{
+					if(type == "{") {
+						// TODO
+						self.buf.newline();
+						self.buf.text("{");
+						self.buf.newline();
+						self.buf.indent();
+						in_scope = true;
+						in_scope_id = i;
+
+						continue;
+					}
+					self.buf.text(child.get_text(self.source_code));
+					if(type == ";") {
+						self.buf.newline();
+					}
+				}
+			}
+		} else {
+			if(type == "}") {
+				self.buf.dedent();
+				self.buf.text("}");
+				self.buf.newline();
+
+				return; // TODO assert we are finished
+			}
+			int blank_line_amount = 0;
+			if (i > in_scope_id)
+			{
+				TSNode sibling = ts::node_child(node, i - 1);
+				blank_line_amount = child.start_point_row() - sibling.end_point_row();
+			}
+			blank_line_amount = min(blank_line_amount, self.config.max_blank_line_between_statements + 1);
+
+			for (int j = 0; j < blank_line_amount - 1; ++j)
+			{
+				self.buf.newline();
+			}
+
+			// Reattach comment
+			if (i > in_scope_id && child.is_comment() && (blank_line_amount == 0 || blank_line_amount == 1))
+			{
+				bool popped_indent = false;
+				if (self.buf.last()!!.kind == DEDENT)
+				{
+					self.buf.pop()!!;
+					popped_indent = true;
+				}
+
+				if (blank_line_amount == 0) // trailing
+
+				{
+					bool repair_indent = false;
+					Token tok = self.buf.pop()!!;
+
+					if (tok.kind == INDENT)
+					{
+						assert (self.buf.gobble_last_newline());
+						repair_indent = true;
+					}
+					else
+					{
+						assert (tok.kind == NEWLINE);
+					}
+
+					self.buf.space();
+					self.process_comment(child);
+
+					self.buf.newline();
+
+					if (repair_indent)
+					{
+						self.buf.indent();
+					}
+
+					if (popped_indent)
+					{
+						self.buf.dedent();
+					}
+					continue;
+				}
+				if (blank_line_amount == 1 && popped_indent) // restick to previous uncanny stmt
+				{
+					self.process_comment(child);
+
+					self.buf.newline();
+					self.buf.dedent();
+					continue;
+				}
+			}
+
+			self.process_node(child, true);
+		}
+	}
+}
+
 <*
  Extract raw comment (without // or /* */ delimiters).
  @param comment : "The processed node"
@@ -856,8 +991,6 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 			self.process_sequence(node);
 		case "generic_type_ident":
 			self.process_sequence(node);
-		case "generic_arg_list":
-			self.process_composite(node, skip_space_type: { ",", "}" }, skip_space_if_after: { "{" },);
 		case "access_ident":
 			self.process_sequence(node);
 		case "access_eval":
@@ -1032,9 +1165,16 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 			self.process_uncanny_scope(node, ":");
 		case "case_range":
 			self.process_sequence(node);
-		case "asm_block_stmt": // TODO
+		case "asm_block_stmt":
+			self.process_asm_block_stmt(node);
+		case "asm_stmt":
+			self.process_composite(node, skip_space_type: { ";", ","}, append_newline: true);
+		case "asm_instr":
 			self.buf.text(node.get_text(self.source_code));
-			self.buf.newline();
+		case "asm_expr":
+			self.process_sequence(node);
+		case "asm_addr":
+			self.process_composite(node, skip_space_type: { "]" }, skip_space_if_after: { "[" });
 		case "ct_assert_stmt":
 			self.process_composite(node, skip_space_type: { ";", ")", "," }, skip_space_if_after: { "(" }, append_newline: true);
 		case "ct_echo_stmt":
