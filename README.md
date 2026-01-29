@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://github.com/lmichaudel/c3fmt/actions/workflows/actions.yml/badge.svg">
-  <img src="https://img.shields.io/badge/c3-v7.7-blue">
+  <img src="https://img.shields.io/badge/c3-v7.8-blue">
   <img src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
@@ -49,36 +49,7 @@ The only dependency is the [tree-sitter](https://github.com/tree-sitter/tree-sit
 - Align wrapped items.
 - Space before <...> options.
 - Import sorting
-- Space before trailing comment
 - Pointer alignment ? (kind of a pain and I think right alignment is heretic)
-
-## About the parser
-
-`c3fmt` use tree-sitter to generate a tree that is then walked down.
-
-For the moment it's very experimental and doesn't even support the whole language.
-If `c3fmt` doesn't know how to format a bit of code, it will not touch it. Please report any
-of these incidents, I tested the formatted against the whole std but maybe missed some grammar points.
-
-`c3fmt` won't change any non whitespace character in your code, ***except*** :
-
-- Line comments between a statement and its scope :
-```c
-if (a >= 0) // Check if a >= 0
-{ ... }
-```
-would become
-```c
-if (a >= 0) /* Check if a >= 0 */
-{ ... }
-```
-or
-```c
-if (a >= 0) /* Check if a >= 0 */ {
-    ...
-}
-```
-depending on brace style.
 
 ## Tests
 
