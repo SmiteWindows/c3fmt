@@ -737,7 +737,7 @@ macro int? @parse(#args, ...) => @pool()
 									$for ; $DerefArgType.kindof == TypeKind.POINTER; $DerefArgType = $DerefArgType.inner: $endfor
 
 									ushort current_index = array_storage_indexes[(char)$shortname]++;
-									if (current_index >= (*assignee).len) return OUT_OF_BOUNDS?;
+									if (current_index >= (*assignee).len) return OUT_OF_BOUNDS~;
 
 									var res = @derive_arg_value(arg, $DerefArgType.typeid, $DerefArgType.typeid, $ArgType.typeid);
 									$if $defined(res!!): if (catch err = res) return err?; $endif
