@@ -38,6 +38,7 @@ module opt;
 
 import libc;
 import std::io, std::math;
+import std::core::ascii;
 
 const BAD_CHAR = '?';
 const BAD_ARG = ':';
@@ -583,7 +584,7 @@ macro int? @parse(#args, ...) => @pool()
 		$assert $shortname.len <= 2
 			: @sprintf("Short-name `%s` is too long. You can only use one character and an optional argument type specifier ('*', '?', or '+').", $shortname);
 		$if $shortname.len > 0:
-			$assert ALPHANUMERIC_SET.@contains($shortname[0])
+			$assert ascii::ALPHANUMERIC_SET.@contains($shortname[0])
 				: `Short-name options should match the following regular expression: [a-zA-Z0-9][\+\?]?`;
 			$dyn_opt_str +++= $shortname[0];   // concat shortname onto dynamic option_str
 		$endif
@@ -592,7 +593,7 @@ macro int? @parse(#args, ...) => @pool()
 			: @sprintf("Long-name `%s` is too short. Long names must be longer than a single character.", $longname);
 		$if $longname.len > 0:
 			$foreach $_c : $longname[..^2] :
-				$assert ALPHANUMERIC_SET.@contains($_c) ||| $_c == '-' ||| $_c == '_'
+				$assert ascii::ALPHANUMERIC_SET.@contains($_c) ||| $_c == '-' ||| $_c == '_'
 					: @sprintf("Long-name `%s` contains invalid characters. Only alphanumeric characters, '-', and '_' are permitted", $longname);
 			$endforeach
 		$endif
@@ -740,7 +741,7 @@ macro int? @parse(#args, ...) => @pool()
 									if (current_index >= (*assignee).len) return OUT_OF_BOUNDS~;
 
 									var res = @derive_arg_value(arg, $DerefArgType.typeid, $DerefArgType.typeid, $ArgType.typeid);
-									$if $defined(res!!): if (catch err = res) return err?; $endif
+									$if $defined(res!!): if (catch err = res) return err~; $endif
 									(*assignee)[current_index] = ($DerefArgType)res;
 
 								$case ENUM:
@@ -762,7 +763,7 @@ macro int? @parse(#args, ...) => @pool()
 
 								$default:   // in the default case, we let the language allow/disallow the assignment
 									var res = @derive_arg_value(arg, $SingleDerefArgType.typeid, $DerefArgType.typeid, $ArgType.typeid);
-									$if $defined(res!!): if (catch err = res) return err?; $endif
+									$if $defined(res!!): if (catch err = res) return err~; $endif
 									// $if $defined(res!!): return res; $endif
 									*assignee = ($SingleDerefArgType)res;
 							$endswitch
