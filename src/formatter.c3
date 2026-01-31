@@ -1064,9 +1064,9 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "generic_type_ident":
 			self.process_composite(node);
 		case "generic_arg_list":
-			self.process_composite(node, skip_space_type: { "}", "," }, skip_space_if_after: { "{" },);
+			self.process_composite(node, skip_space_type: { ">", "," }, skip_space_if_after: { "<" },);
 		case "generic_param_list":
-			self.process_composite(node, skip_space_type: { "}", "," }, skip_space_if_after: { "{" },);
+			self.process_composite(node, skip_space_type: { ">", "," }, skip_space_if_after: { "<" },);
 		case "initializer_element":
 			self.process_composite(node);
 		case "param_path": // TODO idk what this is, can we do { .x .y = 34 }??? why is
