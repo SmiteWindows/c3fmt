@@ -1,7 +1,7 @@
 // Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::collections::list<Type>;
+module std::collections::list <Type>;
 import std::io, std::math, std::collections::list_common;
 
 alias ElementPredicate = fn bool(Type *type);
@@ -461,7 +461,7 @@ macro void List.post_alloc(&self) @private
 // Functions for equatable types
 
 
-fn usz? List.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
+fn usz? List.index_of(&self, Type type) @if (ELEMENT_IS_EQUATABLE)
 {
 	foreach (i, v : self)
 	{
@@ -470,7 +470,7 @@ fn usz? List.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 	return NOT_FOUND~;
 }
 
-fn usz? List.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
+fn usz? List.rindex_of(&self, Type type) @if (ELEMENT_IS_EQUATABLE)
 {
 	foreach_r (i, v : self)
 	{

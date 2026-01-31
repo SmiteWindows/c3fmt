@@ -32,7 +32,7 @@ struct HashSet (Printable)
 	float load_factor;
 }
 
-fn int HashSet.len(&self) @operator(len) => (int) self.count;
+fn usz HashSet.len(&self) @operator(len) => self.count;
 
 <*
  @param [&inout] allocator : "The allocator to use"
@@ -258,7 +258,7 @@ fn bool HashSet.contains(&set, Value value)
 *>
 fn void? HashSet.remove(&set, Value value) @maydiscard
 {
-	if (!set.remove_entry_for_value(value)) return NOT_FOUND?;
+	if (!set.remove_entry_for_value(value)) return NOT_FOUND~;
 }
 
 fn usz HashSet.remove_all(&set, Value[] values)

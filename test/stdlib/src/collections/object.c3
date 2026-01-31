@@ -244,7 +244,6 @@ macro Object* Object.push(&self, value)
 *>
 fn Object*? Object.get(&self, String key) => self.is_empty() ? NOT_FOUND~ : self.map.get(key);
 
-
 fn bool Object.has_key(&self, String key) => self.is_map() && self.map.has_key(key);
 
 <*
