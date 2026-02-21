@@ -418,7 +418,6 @@ fn void C3Fmt.process_uncanny_scope(&self, TSNode node, String scope_enter_type 
 				}
 
 				if (blank_line_amount == 0) // trailing
-
 				{
 					assert (self.buf.gobble_last_newline());
 					self.buf.space();
@@ -455,7 +454,21 @@ fn void C3Fmt.process_uncanny_scope(&self, TSNode node, String scope_enter_type 
 				return;
 			}
 
-			self.process_node(child);
+			if (ts::node_is_named(child))
+			{
+				self.process_node(child, inside_compound: true);
+			}
+			else
+			{
+				// a workaround for ';' after compound statements
+				if(ts::node_type(child) == ";" && ts::node_type(ts::node_child(node, i - 1)) == "compound_stmt") {
+					assert(self.buf.gobble_last_newline());
+					self.buf.text(";");
+					self.buf.newline();
+				} else {
+					self.buf.text(child.get_text(self.source_code));
+				}
+			}
 		}
 	}
 	self.buf.dedent();
@@ -1281,7 +1294,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 			self.process_composite(node, append_newline: true);
 
 		default:
-			io::eprintfn("Type %s is not supported by c3fmt (yet!).", node.type());
+			io::eprintfn("Type %s is not supported by c3fmt (yet!). Around line %s", node.type(), node.start_point_row());
 			self.buf.text(node.get_text(self.source_code));
 			self.buf.newline();
 			// unreachable();
