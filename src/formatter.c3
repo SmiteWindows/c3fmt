@@ -114,7 +114,6 @@ fn void C3Fmt.process_compound(&self, TSNode node)
 			}
 
 			if (blank_line_amount == 0) // trailing
-
 			{
 				bool repair_indent = false;
 				Token tok = self.buf.pop()!!;
@@ -126,6 +125,7 @@ fn void C3Fmt.process_compound(&self, TSNode node)
 				}
 				else
 				{
+					io::printfn("%s", tok.kind);
 					assert (tok.kind == NEWLINE);
 				}
 
@@ -749,6 +749,8 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		/* ======================================== */
 		case "func_declaration":
 			self.process_composite(node, skip_space_type: { ";", "func_param_list" }, append_newline: true);
+		case "interface_func_declaration":
+			self.process_composite(node, skip_space_type: { ";", "func_param_list" }, append_newline: true);
 		case "func_definition":
 			self.process_composite(node, skip_space_type: { "func_param_list", "macro_func_body" }, append_newline: true);
 		case "func_header":
@@ -774,7 +776,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "lambda_declaration":
 			self.process_composite(node);
 		case "macro_declaration":
-			self.process_composite(node, skip_space_type: { "macro_param_list", "macro_func_body" });
+			self.process_composite(node, skip_space_type: { "macro_param_list", "macro_func_body" }, append_newline: true);
 		case "macro_header":
 			self.process_composite(node, skip_space_type: { "." }, skip_space_if_after: { "." },);
 		case "macro_param_list":
@@ -817,7 +819,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 					self.buf.text("}");
 				case "implies_body":
 					self.buf.space();
-					self.process_composite(node, append_newline: true);
+					self.process_composite(node, append_newline: false);
 				case "=>":
 					self.buf.space();
 					self.process_composite(node, append_newline: false);
@@ -1286,6 +1288,6 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 			io::eprintfn("Type %s is not supported by c3fmt (yet!). Around line %s", node.type(), node.start_point_row());
 			self.buf.text(node.get_text(self.source_code));
 			self.buf.newline();
-			// unreachable();
+			//unreachable();
 	}
 }

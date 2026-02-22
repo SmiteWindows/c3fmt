@@ -7,6 +7,7 @@ fn int main (String a__long__arg, String a__long__arg = "Hello", int a_third_arg
 
     main(//
         a__long__arg: "a very long string that will go beyond 80 words", //
+		a_third: 30, //
         a__long__arg: "", 30
     );
 
@@ -19,3 +20,10 @@ fn int main (String a__long__arg, String a__long__arg = "Hello", int a_third_arg
 }
 
 fn int Termios.setAttr(&self, Fd fd, Tcactions optional_actions) @deprecated => self.set_attr(fd, optional_actions);
+
+Pipeline a = {
+		{
+		.offset = "a very long string that will go beyond 80 words",// Todo: Add CameraData offset here
+		.range = "a very long string that will go beyond 80 words"
+		}
+};

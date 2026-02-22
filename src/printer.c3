@@ -290,7 +290,6 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 		bool found_group = false;
 		bool skip_next_space = false;
 		usz next_indent_increase = 0;
-		usz line_finish_indent_increase = 0;
 
 		TokenBuffer new_buf;
 		new_buf.init(mem);
@@ -314,26 +313,21 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 						new_buf.push(token::space());
 					}
 					new_buf.push(token::text(token.str));
-					new_buf.push(token::newline());
+
+					bool wrap_incoming =
+					id < (tokens.len - 1) && tokens[id+1].kind == WRAP_POINT
+					|| id < (tokens.len - 2) && tokens[id+2].kind == WRAP_POINT;
+
+					if(!wrap_incoming || !need_wrapping) {
+						new_buf.push(token::newline());
+						self.print_line(new_buf.array_view()[i..], indent_level + next_indent_increase);
+						i = new_buf.size;
+					}
+
 					skip_next_space = id < (tokens.len - 1) && tokens[id+1].kind == SPACE;
-
-					self.print_line(new_buf.array_view()[i..], indent_level + next_indent_increase);
-					i = new_buf.size;
-
-					line_finish_indent_increase = 1;
-					next_indent_increase = 1;
 				case WRAP_POINT:
 					if(!need_wrapping) {
 						continue;
-					}
-
-					bool forced = false;
-					if(new_buf.size > 2) {
-						if(new_buf[^1].kind == NEWLINE
-							|| (new_buf[^2].kind == NEWLINE && new_buf[^1].kind == SPACE))
-						{
-							forced = true;
-						}
 					}
 
 					if(token.wrap_point.group_id != group_id) {
@@ -341,14 +335,11 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 						continue;
 					}
 
-					if(!forced) {
-						new_buf.push(token::newline());
-						self.print_line(new_buf.array_view()[i..], indent_level + next_indent_increase);
-						i = new_buf.size;
-					}
+					new_buf.push(token::newline());
+					self.print_line(new_buf.array_view()[i..], indent_level + next_indent_increase);
+					i = new_buf.size;
 
-					line_finish_indent_increase = token.wrap_point.indent;
-					next_indent_increase = 1;
+					next_indent_increase = token.wrap_point.indent;
 				case SPACE:
 					if(!skip_next_space) {
 						new_buf.push(token);
@@ -360,7 +351,7 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 			}
 		}
 
-		self.print_line(new_buf.array_view()[i..], indent_level + line_finish_indent_increase);
+		self.print_line(new_buf.array_view()[i..], indent_level + next_indent_increase);
 		new_buf.free();
 		return;
 	}
