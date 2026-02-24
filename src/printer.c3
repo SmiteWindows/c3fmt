@@ -64,7 +64,10 @@ fn Token inline_comment(String text)
 
 fn Token begin_wrap_group(usz id)
 {
-	return (Token) { .kind = BEGIN_WRAP_GROUP, .wrap_point = {.group_id = id} };
+	return (Token) {
+		.kind = BEGIN_WRAP_GROUP,
+		.wrap_point = { .group_id = id }
+	};
 }
 
 fn Token wrap_point(WrapPoint wrap_point)
@@ -126,7 +129,7 @@ import std::collections::list;
 import std::io;
 import c3fmt::token;
 
-alias TokenBuffer = List{Token};
+alias TokenBuffer = List {Token};
 
 fn void C3Fmt.trim(&self)
 {
@@ -153,7 +156,8 @@ fn void C3Fmt.trim(&self)
 		if (self.buf[i].kind == EOF)
 		{
 			int j = (int)i - 1;
-			while (j >= 0 && (self.buf[j].kind == SPACE || self.buf[j].kind == NEWLINE))
+			while (j >= 0
+				&& (self.buf[j].kind == SPACE || self.buf[j].kind == NEWLINE))
 			{
 				(void)new_buf.pop();
 				j--;
@@ -179,25 +183,25 @@ fn void C3Fmt.print(&self)
 
 	// for debugging
 	// foreach(tok : self.buf) {
-	// 	switch(tok.kind) {
-	// 		case NEWLINE:
-	// 			io::printf("NL");
-	// 		case EOF:
-	// 			io::printf("EOF");
-	// 		case TEXT:
-	// 			io::printf("%s", tok.str);
-	// 		case INDENT:
-	// 			io::printf(">");
-	// 		case DEDENT:
-	// 			io::printf("<");
-	// 		case INLINE_COMMENT:
-	// 			io::printf("//");
-	// 		case WRAP_POINT:
-	// 			io::printf("WP");
-	// 		case BEGIN_WRAP_GROUP:
-	// 		case SPACE:
-	// 	}
-	// 	io::printf(" ");
+	// switch(tok.kind) {
+	// case NEWLINE:
+	// io::printf("NL");
+	// case EOF:
+	// io::printf("EOF");
+	// case TEXT:
+	// io::printf("%s", tok.str);
+	// case INDENT:
+	// io::printf(">");
+	// case DEDENT:
+	// io::printf("<");
+	// case INLINE_COMMENT:
+	// io::printf("//");
+	// case WRAP_POINT:
+	// io::printf("WP");
+	// case BEGIN_WRAP_GROUP:
+	// case SPACE:
+	// }
+	// io::printf(" ");
 	// }
 	// io::printfn("");
 
@@ -242,7 +246,8 @@ fn void C3Fmt.print_indent(&self)
 	}
 }
 
-fn usz C3Fmt.calculate_line_length(&self, Token[] tokens, usz indent_level) {
+fn usz C3Fmt.calculate_line_length(&self, Token[] tokens, usz indent_level)
+{
 	usz line_length = 0;
 
 	foreach (token : tokens)
@@ -274,17 +279,21 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 	}
 
 	usz line_length = self.calculate_line_length(tokens, indent_level);
-	bool need_wrapping = self.config.max_line_length > 0 && line_length > self.config.max_line_length;
+	bool need_wrapping = self.config.max_line_length > 0
+		&& line_length > self.config.max_line_length;
 	bool need_processing = false;
 
-	foreach(token : tokens) {
-		if(token.kind == INLINE_COMMENT || token.kind == WRAP_POINT
-		|| token.kind == BEGIN_WRAP_GROUP) {
+	foreach (token : tokens)
+	{
+		if (token.kind == INLINE_COMMENT || token.kind == WRAP_POINT
+			|| token.kind == BEGIN_WRAP_GROUP)
+		{
 			need_processing = true;
 		}
 	}
 
-	if(need_processing) {
+	if (need_processing)
+	{
 		usz i = 0;
 		usz group_id = 0;
 		bool found_group = false;
@@ -296,58 +305,81 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 
 		foreach (id, token : tokens)
 		{
-			switch(token.kind) {
+			switch (token.kind)
+			{
 				case BEGIN_WRAP_GROUP:
-					if(!need_wrapping) {
+					if (!need_wrapping)
+					{
 						continue;
 					}
-					if(!found_group) {
+					if (!found_group)
+					{
 						found_group = true;
 						group_id = token.wrap_point.group_id;
-					} else {
+					}
+					else
+					{
 						new_buf.push(token);
 					}
 				case INLINE_COMMENT:
 					new_buf.push(token::text("//"));
-					if(token.str != "") {
+					if (token.str != "")
+					{
 						new_buf.push(token::space());
 					}
 					new_buf.push(token::text(token.str));
 
-					bool wrap_incoming =
-					id < (tokens.len - 1) && tokens[id+1].kind == WRAP_POINT
-					|| id < (tokens.len - 2) && tokens[id+2].kind == WRAP_POINT;
+					bool wrap_incoming = id < (tokens.len - 1)
+						&& tokens[id + 1].kind == WRAP_POINT
+						|| id < (tokens.len - 2)
+							&& tokens[id + 2].kind == WRAP_POINT;
 
-					if(!wrap_incoming || !need_wrapping) {
+					if (!wrap_incoming || !need_wrapping)
+					{
 						new_buf.push(token::newline());
-						self.print_line(new_buf.array_view()[i..], indent_level + next_indent_increase);
+						self
+							.print_line(
+								new_buf.array_view()[i..],
+								indent_level + next_indent_increase
+							);
 						i = new_buf.size;
 					}
 
-					if(!wrap_incoming) {
+					if (!wrap_incoming)
+					{
 						next_indent_increase = 0;
 					}
 
-					skip_next_space = id < (tokens.len - 1) && tokens[id+1].kind == SPACE;
+					skip_next_space = id < (tokens.len - 1)
+						&& tokens[id + 1].kind == SPACE;
 				case WRAP_POINT:
-					if(!need_wrapping) {
+					if (!need_wrapping)
+					{
 						continue;
 					}
 
-					if(token.wrap_point.group_id != group_id) {
+					if (token.wrap_point.group_id != group_id)
+					{
 						new_buf.push(token);
 						continue;
 					}
 
 					new_buf.push(token::newline());
-					self.print_line(new_buf.array_view()[i..], indent_level + next_indent_increase);
+					self
+						.print_line(
+							new_buf.array_view()[i..],
+							indent_level + next_indent_increase
+						);
 					i = new_buf.size;
 
 					next_indent_increase = token.wrap_point.indent;
 				case SPACE:
-					if(!skip_next_space) {
+					if (!skip_next_space)
+					{
 						new_buf.push(token);
-					} else {
+					}
+					else
+					{
 						skip_next_space = false;
 					}
 				default:
@@ -355,7 +387,11 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 			}
 		}
 
-		self.print_line(new_buf.array_view()[i..], indent_level + next_indent_increase);
+		self
+			.print_line(
+				new_buf.array_view()[i..],
+				indent_level + next_indent_increase
+			);
 		new_buf.free();
 		return;
 	}
@@ -368,7 +404,9 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 	foreach (id, token : tokens)
 	{
 		// trim one space
-		if(token.kind == SPACE && (id < (tokens.len - 1) && tokens[id+1].kind == NEWLINE)) {
+		if (token.kind == SPACE
+			&& (id < (tokens.len - 1) && tokens[id + 1].kind == NEWLINE))
+		{
 			continue;
 		}
 		self.dstr_buf.append(token.print());

@@ -8,7 +8,12 @@ import std::core::mem;
  @param string : "C3 source code."
  @param config : "Configuration to be used."
 *>
-fn String? format_string(Allocator allocator, String string, Config config = default_config(), bool check_semantic = false)
+fn String? format_string(
+	Allocator allocator,
+	String string,
+	Config config = default_config(),
+	bool check_semantic = false
+)
 {
 	C3Fmt formatter = c3fmt::new(string, config);
 	defer formatter.free();
@@ -44,13 +49,27 @@ fn int main(String[] args)
 	// c3fmt off
 	int? arg_last_parsed = opt::@parse(//
 		args, //
-		"h*", "help", null, //
-		"v", "version", &version_asked, //
-		null, "in-place", &cli_options.in_place, //
-		null, "stdin", &cli_options.stdin, //
-		null, "stdout", &cli_options.stdout, //
-		null, "config?", &cli_options.config, //
-		null, "default", &cli_options.force_default_config
+		"h*",
+		"help",
+		null, //
+		"v",
+		"version",
+		&version_asked, //
+		null,
+		"in-place",
+		&cli_options.in_place, //
+		null,
+		"stdin",
+		&cli_options.stdin, //
+		null,
+		"stdout",
+		&cli_options.stdout, //
+		null,
+		"config?",
+		&cli_options.config, //
+		null,
+		"default",
+		&cli_options.force_default_config
 	);
 	// c3fmt on
 
@@ -109,7 +128,10 @@ fn int main(String[] args)
 		}
 		else
 		{
-			io::eprintfn("Can't parse .c3fmt configuration file.", cli_options.config);
+			io::eprintfn(
+				"Can't parse .c3fmt configuration file.",
+				cli_options.config
+			);
 			return 1;
 		}
 	}
@@ -179,7 +201,11 @@ fn int main(String[] args)
 
 		if (catch excuse = formatted)
 		{
-			io::eprintfn("Error: could not format file %s: %s.", args[i], excuse);
+			io::eprintfn(
+				"Error: could not format file %s: %s.",
+				args[i],
+				excuse
+			);
 			return 1;
 		}
 
@@ -187,7 +213,11 @@ fn int main(String[] args)
 		{
 			if (catch excuse = file::save(args[i], formatted))
 			{
-				io::eprintfn("Error: could not write to file %s: %s", args[i], excuse);
+				io::eprintfn(
+					"Error: could not write to file %s: %s",
+					args[i],
+					excuse
+				);
 			}
 		}
 
