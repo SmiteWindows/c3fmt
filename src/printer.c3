@@ -305,7 +305,14 @@ fn void dbg(Token[] tokens)
 }
 fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 {
-	// dbg(tokens);
+	//dbg(tokens);
+	if(tokens.len == 0) return;
+
+	if(tokens[^1].kind != NEWLINE && tokens[^1].kind != EOF
+		&& tokens[^1].kind != INLINE_COMMENT) {
+		return;
+	}
+
 	if (tokens.len == 1 && tokens[0].kind == NEWLINE)
 	{
 		self.dstr_buf.append('\n');
@@ -313,31 +320,31 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 	}
 
 	usz line_length = self.calculate_line_length(tokens, indent_level);
-	bool need_wrapping = self.config.max_line_length > 0
-		&& line_length > self.config.max_line_length;
-	bool need_processing = false;
-
 	usz highest_priority = 0;
+	bool need_wrapping = false;
+	bool has_inline_comment = false;
+
 	foreach (token : tokens)
 	{
-		if (token.kind == INLINE_COMMENT || token.kind == WRAP_POINT
-			|| token.kind == BEGIN_WRAP_GROUP)
+		if(token.kind == BEGIN_WRAP_GROUP)
 		{
-			need_processing = true;
+			need_wrapping = true;
+			highest_priority = max(token.wrap_point.priority, highest_priority);
 		}
 
-		if (token.kind == BEGIN_WRAP_GROUP)
-		{
-			highest_priority = max(token.wrap_point.priority, highest_priority);
+		if(token.kind == INLINE_COMMENT) {
+			has_inline_comment = true;
 		}
 	}
 
-	if (need_processing)
+	need_wrapping = need_wrapping && self.config.max_line_length > 0
+		&& line_length > self.config.max_line_length;
+
+	if (need_wrapping)
 	{
 		usz i = 0;
 		usz group_id = 0;
 		bool found_group = false;
-		bool skip_next_space = false;
 		usz next_indent_increase = 0;
 
 		TokenBuffer new_buf;
@@ -348,10 +355,6 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 			switch (token.kind)
 			{
 				case BEGIN_WRAP_GROUP:
-					if (!need_wrapping)
-					{
-						continue;
-					}
 					if (!found_group
 						&& token.wrap_point.priority >= highest_priority)
 					{
@@ -362,42 +365,7 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 					{
 						new_buf.push(token);
 					}
-				case INLINE_COMMENT:
-					new_buf.push(token::text("//"));
-					if (token.str != "")
-					{
-						new_buf.push(token::space());
-					}
-					new_buf.push(token::text(token.str));
-
-					bool wrap_incoming = id < (tokens.len - 1)
-						&& tokens[id + 1].kind == WRAP_POINT
-						|| id < (tokens.len - 2)
-							&& tokens[id + 2].kind == WRAP_POINT;
-
-					if (!wrap_incoming || !need_wrapping)
-					{
-						new_buf.push(token::newline());
-						self.print_line(
-							new_buf.array_view()[i..],
-							indent_level + next_indent_increase
-						);
-						i = new_buf.size;
-					}
-
-					if (!wrap_incoming)
-					{
-						next_indent_increase = 0;
-					}
-
-					skip_next_space = id < (tokens.len - 1)
-						&& tokens[id + 1].kind == SPACE;
 				case WRAP_POINT:
-					if (!need_wrapping)
-					{
-						continue;
-					}
-
 					if (token.wrap_point.group_id != group_id)
 					{
 						new_buf.push(token);
@@ -412,25 +380,67 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 					i = new_buf.size;
 
 					next_indent_increase = token.wrap_point.indent;
-				case SPACE:
-					if (!skip_next_space)
-					{
-						new_buf.push(token);
-					}
-					else
-					{
-						skip_next_space = false;
-					}
 				default:
 					new_buf.push(token);
 			}
 		}
-
+		// only rec if we found a group
+		// if we didnt, it means no wrap is possible
 		self.print_line(
 			new_buf.array_view()[i..],
 			indent_level + next_indent_increase
 		);
 		new_buf.free();
+		return;
+	}
+
+	// Last step is breaking down inline comments into TEXT and NEWLINE tokens.
+	// The NEWLINE is not always appended (maybe there was a wrap that did it)
+	if(has_inline_comment){
+		int to_skip = 0;
+		TokenBuffer new_buf;
+		new_buf.init(mem, 128);
+
+		foreach (id, token : tokens)
+		{
+			switch (token.kind)
+			{
+				case INLINE_COMMENT:
+					new_buf.push(token::text("//"));
+					if (token.str != "")
+					{
+						new_buf.push(token::space());
+					}
+					new_buf.push(token::text(token.str));
+					new_buf.push(token::newline());
+					self.print_line(
+						new_buf.array_view(),
+						indent_level
+					);
+					new_buf.clear();
+
+					// skip up to 2 tokens if they are space/nl
+					to_skip = 2;
+				case SPACE:
+					if(to_skip > 0) {
+						to_skip--;
+					} else {
+						new_buf.push(token);
+					}
+				case NEWLINE:
+					if(to_skip > 0) {
+						to_skip = 0;
+					} else {
+						new_buf.push(token);
+					}
+				default:
+					to_skip--;
+					new_buf.push(token);
+			}
+		}
+		self.print_line(new_buf.array_view(), indent_level);
+		new_buf.free();
+
 		return;
 	}
 
@@ -441,7 +451,7 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 
 	foreach (id, token : tokens)
 	{
-		// trim one space
+		// trim space that could be there because of wrapping
 		if (token.kind == SPACE
 			&& (id < (tokens.len - 1) && tokens[id + 1].kind == NEWLINE))
 		{
