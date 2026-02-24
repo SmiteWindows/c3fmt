@@ -324,6 +324,10 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 						i = new_buf.size;
 					}
 
+					if(!wrap_incoming) {
+						next_indent_increase = 0;
+					}
+
 					skip_next_space = id < (tokens.len - 1) && tokens[id+1].kind == SPACE;
 				case WRAP_POINT:
 					if(!need_wrapping) {

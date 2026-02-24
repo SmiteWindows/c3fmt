@@ -127,7 +127,6 @@ fn void C3Fmt.process_compound(&self, TSNode node)
 			}
 
 			if (blank_line_amount == 0) // trailing
-
 			{
 				bool repair_indent = false;
 				Token tok = self.buf.pop()!!;
@@ -158,9 +157,10 @@ fn void C3Fmt.process_compound(&self, TSNode node)
 				}
 				continue;
 			}
+
+
 			if (blank_line_amount == 1
 				&& popped_indent) // restick to previous uncanny stmt
-
 			{
 				self.process_comment(child);
 
@@ -168,6 +168,7 @@ fn void C3Fmt.process_compound(&self, TSNode node)
 				self.buf.dedent();
 				continue;
 			}
+
 		}
 
 		self.process_node(child, true);
@@ -199,6 +200,7 @@ fn void C3Fmt.process_composite(
 	usz group_id = 0
 )
 {
+	bool found_inline = false;
 	for (uint i = 0; i < ts::node_child_count(node); ++i)
 	{
 		TSNode child = ts::node_child(node, i);
@@ -240,13 +242,14 @@ fn void C3Fmt.process_composite(
 					unreachable();
 				}
 				self.buf.inline_comment(self.extract_comment_string(child));
+				found_inline = true;
 			}
 		}
 		else
 		{
 			if (ts::node_is_named(child))
 			{
-				self.process_node(child);
+				self.process_node(child, found_inline);
 			}
 			else
 			{
@@ -402,7 +405,6 @@ fn void C3Fmt.process_uncanny_scope(
 				}
 
 				if (blank_line_amount == 0) // trailing
-
 				{
 					assert (self.buf.gobble_last_newline());
 					self.buf.space();
@@ -415,9 +417,10 @@ fn void C3Fmt.process_uncanny_scope(
 					}
 					continue;
 				}
+
+
 				if (blank_line_amount == 1
 					&& popped_indent) // restick to previous uncanny stmt
-
 				{
 					self.process_comment(child);
 
@@ -425,6 +428,7 @@ fn void C3Fmt.process_uncanny_scope(
 					self.buf.dedent();
 					continue;
 				}
+
 			}
 
 			if (child.type() == scope_exit_type)
@@ -503,15 +507,14 @@ fn void C3Fmt.process_ct_case_stmt(&self, TSNode node)
 						ts::node_child(node, i - 1),
 						child
 					)) // as trailing
-
 				{
 					self.buf.space();
 					self.process_line_comment(child);
 					self.buf.newline();
 					nl_appended = true;
 				}
-				else // as comment in body
 
+				else // as comment in body
 				{
 					if (!nl_appended)
 					{
@@ -525,6 +528,7 @@ fn void C3Fmt.process_ct_case_stmt(&self, TSNode node)
 
 					nl_appended = true;
 				}
+
 			}
 		}
 		else
@@ -657,7 +661,6 @@ fn void C3Fmt.process_asm_block_stmt(&self, TSNode node)
 				}
 
 				if (blank_line_amount == 0) // trailing
-
 				{
 					bool repair_indent = false;
 					Token tok = self.buf.pop()!!;
@@ -688,9 +691,10 @@ fn void C3Fmt.process_asm_block_stmt(&self, TSNode node)
 					}
 					continue;
 				}
+
+
 				if (blank_line_amount == 1
 					&& popped_indent) // restick to previous uncanny stmt
-
 				{
 					self.process_comment(child);
 
@@ -698,6 +702,7 @@ fn void C3Fmt.process_asm_block_stmt(&self, TSNode node)
 					self.buf.dedent();
 					continue;
 				}
+
 			}
 
 			self.process_node(child, true);
