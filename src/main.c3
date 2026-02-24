@@ -41,6 +41,7 @@ CLIOptions cli_options;
 fn int main(String[] args)
 {
 	bool version_asked;
+	// c3fmt off
 	int? arg_last_parsed = opt::@parse(//
 		args, //
 		"h*", "help", null, //
@@ -51,6 +52,7 @@ fn int main(String[] args)
 		null, "config?", &cli_options.config, //
 		null, "default", &cli_options.force_default_config
 	);
+	// c3fmt on
 
 	if (catch err = arg_last_parsed)
 	{

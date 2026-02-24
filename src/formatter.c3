@@ -11,6 +11,7 @@ struct C3Fmt
 	String source_code;
 
 	bool wrapping_enabled;
+	bool formatter_enabled;
 
 	TokenBuffer buf;
 	DString dstr_buf;
@@ -23,6 +24,7 @@ fn C3Fmt new(String source_code, Config config)
 	instance.source_code = source_code.copy(mem);
 	instance.config = config;
 	instance.wrapping_enabled = true;
+	instance.formatter_enabled = true;
 	instance.buf.init(mem);
 	instance.dstr_buf.init(mem);
 
@@ -161,7 +163,7 @@ fn void C3Fmt.process_compound(&self, TSNode node)
 }
 
 faultdef NO_WRAP;
-alias AddWrapPointFn = fn WrapPoint?(String type, usz id);
+alias AddWrapPointFn = fn WrapPoint?(String type, String field, usz id);
 <*
  Format a "line" composed of several nodes.
  Append a white space between each node.
@@ -190,7 +192,7 @@ fn void C3Fmt.process_composite(&self, TSNode node, String[] skip_space_type = {
 
 		if (add_wrap_point_fn && self.wrapping_enabled)
 		{
-			WrapPoint? wrap_point = add_wrap_point_fn(type, group_id);
+			WrapPoint? wrap_point = add_wrap_point_fn(type, child.field_name(), group_id);
 			if (try wrap_point)
 			{
 				self.buf.wrap_point(wrap_point);
@@ -245,7 +247,7 @@ fn void C3Fmt.process_sequence(&self, TSNode node, AddWrapPointFn add_wrap_point
 
 		if (add_wrap_point_fn && self.wrapping_enabled)
 		{
-			WrapPoint? wrap_point = add_wrap_point_fn(child.type(), group_id);
+			WrapPoint? wrap_point = add_wrap_point_fn(child.type(), child.field_name(), group_id);
 			if (try wrap_point)
 			{
 				self.buf.wrap_point(wrap_point);
@@ -367,7 +369,6 @@ fn void C3Fmt.process_uncanny_scope(&self, TSNode node, String scope_enter_type 
 					continue;
 				}
 				if (blank_line_amount == 1 && popped_indent) // restick to previous uncanny stmt
-
 				{
 					self.process_comment(child);
 
@@ -640,11 +641,13 @@ fn String C3Fmt.extract_comment_string(&self, TSNode comment)
 	{
 		String text = comment.get_text(self.source_code);
 		text = text[2..]; // trim // or #!
+
 		return text.trim();
 	}
 	else if (comment.type() == "block_comment")
 	{
 		String text = ts::node_named_child(comment, 0).get_text(self.source_code);
+
 		return text.trim();
 	}
 	unreachable();
@@ -676,9 +679,17 @@ fn void C3Fmt.process_block_comment(&self, TSNode node)
 {
 	self.buf.text("/*");
 	self.buf.space();
-	self.buf.text(self.extract_comment_string(node));
+	String comment = self.extract_comment_string(node);
+	self.buf.text(comment);
 	self.buf.space();
 	self.buf.text("*/");
+
+	if(comment == "c3fmt on") {
+		self.formatter_enabled = true;
+	}
+	if(comment == "c3fmt off") {
+		self.formatter_enabled = false;
+	}
 }
 
 <*
@@ -691,7 +702,15 @@ fn void C3Fmt.process_line_comment(&self, TSNode node)
 
 	self.buf.text(node.get_text(self.source_code)[0:2]);
 	self.buf.space();
-	self.buf.text(self.extract_comment_string(node));
+	String comment = self.extract_comment_string(node);
+	self.buf.text(comment);
+
+	if(comment == "c3fmt on") {
+		self.formatter_enabled = true;
+	}
+	if(comment == "c3fmt off") {
+		self.formatter_enabled = false;
+	}
 }
 <*
  Pretty print a doc comment.
@@ -757,7 +776,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 			self.process_composite(node, skip_space_type: { "." }, skip_space_if_after: { "." },);
 		case "func_param_list":
 			usz id = self.buf.begin_wrap_group();
-			self.process_composite(node, skip_space_type: { ")", "," }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, usz id)
+			self.process_composite(node, skip_space_type: { ")", "," }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, String field, usz id)
 			{
 				switch (type)
 				{
@@ -783,7 +802,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 			if(node.has_child_of_type("param"))
 			{
 				usz id = self.buf.begin_wrap_group();
-				self.process_composite(node, skip_space_type: { ")", ",", ";" }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, usz id)
+				self.process_composite(node, skip_space_type: { ")", ",", ";" }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, String field, usz id)
 				{
 					switch (type)
 					{
@@ -987,7 +1006,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		 	if(node.has_child_of_type("call_arg"))
 			{
 				usz id = self.buf.begin_wrap_group();
-				self.process_composite(node, skip_space_type: { ")", "," }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, usz id)
+				self.process_composite(node, skip_space_type: { ")", "," }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, String field, usz id)
 				{
 					switch (type)
 					{
@@ -1015,7 +1034,18 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "maybe_deref_expr":
 			self.process_sequence(node);
 		case "binary_expr":
-			self.process_composite(node);
+			usz id = self.buf.begin_wrap_group();
+			self.process_composite(node, add_wrap_point_fn: fn (String type, String field, usz id)
+			{
+				switch (field)
+				{
+					case "operator":
+						return { .indent = 1, .group_id = id};
+					default:
+						return NO_WRAP~;
+				}
+			}, group_id: id);
+			//self.process_composite(node);
 		case "assignment_expr":
 			self.process_composite(node);
 		case "paren_expr":
@@ -1027,7 +1057,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "initializer_list":
 			if(node.has_child_of_type("initializer_element")) {
 				usz id = self.buf.begin_wrap_group();
-				self.process_composite(node, skip_space_type: { "," }, add_wrap_point_fn: fn (String type, usz id)
+				self.process_composite(node, skip_space_type: { "," }, add_wrap_point_fn: fn (String type, String field, usz id)
 				{
 					switch (type)
 					{
@@ -1072,7 +1102,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 			if(node.has_child_of_type(".") && ts::node_parent(node).type() != "param_path")
 			{
 				usz id = self.buf.begin_wrap_group();
-				self.process_sequence(node, add_wrap_point_fn: fn (String type, usz id)
+				self.process_sequence(node, add_wrap_point_fn: fn (String type, String field, usz id)
 				{
 					switch (type)
 					{
