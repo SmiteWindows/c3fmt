@@ -1266,7 +1266,7 @@ fn void C3Fmt.process_node(
 		case "initializer_list":
 			if (node.has_child_of_type("initializer_element"))
 			{
-				usz id = self.buf.begin_wrap_group(1);
+				usz id = self.buf.begin_wrap_group(2);
 				self.process_composite(
 					node,
 					skip_space_type: { "," },
