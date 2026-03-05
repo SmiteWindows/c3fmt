@@ -16,6 +16,10 @@
     "update-grammar": {
       "type": "prepare",
       "exec": [ "$PWD/update_tree_sitter_c3.sh" ]
+    },
+    "update-stdlib": {
+      "type": "prepare",
+      "exec": [ "$PWD/update_stdlib.sh" ]
     }
   },
   "cpu": "generic",

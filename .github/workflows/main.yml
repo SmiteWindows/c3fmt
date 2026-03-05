@@ -47,7 +47,7 @@ jobs:
           curl -L -o c3.zip https://github.com/c3lang/c3c/releases/latest/download/c3-windows.zip
           unzip c3.zip
           echo "C3C_LIB=$PWD/c3/lib" >> $GITHUB_ENV
-          echo "$PWD/c3" >> $GITHUB_PATH
+          echo "$PWD/c3" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Install lld (macOS)
         if: runner.os == 'macOS'
@@ -65,7 +65,7 @@ jobs:
 
       - name: Run tests (Windows)
         if: runner.os == 'Windows'
-        run: c3c.exe test
+        run: c3c test
 
       - name: Compile formatted standard library
         if: runner.os != 'Windows'
@@ -75,7 +75,7 @@ jobs:
       - name: Compile formatted standard library (Windows)
         if: runner.os == 'Windows'
         working-directory: test/stdlib
-        run: c3c.exe build
+        run: c3c build
 
       - name: Build c3fmt
         if: runner.os != 'Windows'
@@ -83,7 +83,7 @@ jobs:
 
       - name: Build c3fmt (Windows)
         if: runner.os == 'Windows'
-        run: c3c.exe build c3fmt
+        run: c3c build c3fmt
 
       - name: Upload artifact (Linux)
         if: runner.os == 'Linux'

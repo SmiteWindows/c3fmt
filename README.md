@@ -47,13 +47,18 @@ c3c build
 ```
 The binary will be located in `build/c3fmt`.
 
-### Updating the Grammar
+### Updating Sources
 
-To update the C3 tree-sitter grammar from the latest upstream sources:
-```bash
-c3c build update-grammar --trust=full
-```
-This runs a prepare script that clones the [tree-sitter-c3](https://github.com/c3lang/tree-sitter-c3) repository, regenerates the parser, and updates `lib/tree_sitter_c3.c3l`.
+You can keep the project dependencies and test data up-to-date using the built-in `prepare` targets:
+
+*   **Tree-sitter Grammar:** Update the C3 grammar parser from upstream.
+    ```bash
+    c3c build update-grammar --trust=full
+    ```
+*   **Standard Library:** Sync `test/stdlib/src` with the latest C3 standard library for stability testing.
+    ```bash
+    c3c build update-stdlib --trust=full
+    ```
 
 ## Tests
 
