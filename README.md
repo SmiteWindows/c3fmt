@@ -43,6 +43,11 @@ Run `c3c build` to build `c3fmt`.
 
 The only dependency is the [tree-sitter](https://github.com/tree-sitter/tree-sitter) sdk.
 
+## Vendored libraries
+
+`src/opt.c3` is a vendored copy of [getopt.c3l](https://github.com/NotsoanoNimus/getopt.c3l).
+
+
 ## Planned features / wishlist
 
 - Code wrapping (current breaks with nested constructions).

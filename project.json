@@ -15,5 +15,5 @@
     }
   },
   "cpu": "generic",
-  "opt": "O0"
+  "opt": "O1"
 }
