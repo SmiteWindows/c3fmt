@@ -19,7 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install C3 compiler (Linux)
         if: runner.os == 'Linux'
@@ -87,21 +87,21 @@ jobs:
 
       - name: Upload artifact (Linux)
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: c3fmt-linux
           path: build/c3fmt
 
       - name: Upload artifact (macOS)
         if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: c3fmt-macos
           path: build/c3fmt
 
       - name: Upload artifact (Windows)
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: c3fmt-windows
           path: build/c3fmt.exe
@@ -115,19 +115,19 @@ jobs:
       contents: write
     steps:
       - name: Download Linux binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: c3fmt-linux
           path: release-bin/linux
 
       - name: Download macOS binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: c3fmt-macos
           path: release-bin/macos
 
       - name: Download Windows binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: c3fmt-windows
           path: release-bin/windows
