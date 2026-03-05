@@ -12,8 +12,6 @@
 
 A customizable code formatter for the C3 language, written in C3.
 
-Check the [c3fmt-vscode](https://marketplace.visualstudio.com/items?itemName=lmichaudel.c3fmt) extension to use it inside VS Code.
-
 ## Usage
 
 Usage:
