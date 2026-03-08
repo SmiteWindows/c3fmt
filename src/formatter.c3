@@ -1565,7 +1565,7 @@ fn void C3Fmt.process_node(
 			);
 		case "try_unwrap":
 			self.process_composite(node);
-		case "catch_unwrap_list": // TODO not really sure what this is, i saw if(catch a, b) but ?
+		case "catch_unwrap_list":
 			self.process_composite(
 				node,
 				skip_space_type: { "," },
@@ -1576,7 +1576,6 @@ fn void C3Fmt.process_node(
 		case "call_expr":
 			self.process_composite(node, skip_space_type: { "call_arg_list" });
 		case "call_arg_list":
-			// TODO maybe avoid wrapping if there is just ONE argument ?
 			if (node.has_child_of_type("call_arg"))
 			{
 				usz id = self.begin_wrap_group(2);
