@@ -251,6 +251,27 @@ fn TSNode find_assignment_op(TSNode node)
 	return (TSNode){};
 }
 
+fn void C3Fmt.process_assignment_left(&self, TSNode target, TSNode op)
+{
+	bool first = true;
+	for (uint k = 0; k < ts::node_child_count(target); ++k) {
+		TSNode c = ts::node_child(target, k);
+		if (ts::node_eq(c, op)) break;
+		if (ts::node_is_named(c)) {
+			if (!first && c.type() != "macro_param_list") self.buf.push(token::space());
+			self.process_node(c);
+			first = false;
+		} else {
+			String t = c.get_text(self.source_code);
+			if (t == "const" || t == "var" || t == "static" || t == "pub" || t == "macro") {
+				if (!first) self.buf.push(token::space());
+				self.buf.push(token::text(t));
+				first = false;
+			}
+		}
+	}
+}
+
 fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint end_index)
 {
 	usz max_op_col = 0;
@@ -271,24 +292,7 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 		{
 			// Format up to the '='
 			TSNode target = (child.type() == "declaration_stmt" || child.type() == "global_declaration") ? ts::node_named_child(child, 0) : child;
-
-			bool first = true;
-			for (uint k = 0; k < ts::node_child_count(target); ++k) {
-				TSNode c = ts::node_child(target, k);
-				if (ts::node_eq(c, op)) break;
-				if (ts::node_is_named(c)) {
-					if (!first && c.type() != "macro_param_list") self.buf.push(token::space());
-					self.process_node(c);
-					first = false;
-				} else {
-					String t = c.get_text(self.source_code);
-					if (t == "const" || t == "var" || t == "static" || t == "pub" || t == "macro") {
-						if (!first) self.buf.push(token::space());
-						self.buf.push(token::text(t));
-						first = false;
-					}
-				}
-			}
+			self.process_assignment_left(target, op);
 			max_op_col = max(max_op_col, self.current_column());
 		}
 
@@ -345,24 +349,7 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 			TSNode right = (target.type() == "macro_declaration" || !target.has_child_with_field("right")) ? (TSNode){} : target.get_child_with_field("right");
 
 			// Format until '='
-			uint k = 0;
-			bool first = true;
-			for (; k < ts::node_child_count(target); ++k) {
-				TSNode c = ts::node_child(target, k);
-				if (ts::node_eq(c, op)) break;
-				if (ts::node_is_named(c)) {
-					if (!first && c.type() != "macro_param_list") self.buf.push(token::space());
-					self.process_node(c);
-					first = false;
-				} else {
-					String t = c.get_text(self.source_code);
-					if (t == "const" || t == "var" || t == "static" || t == "pub" || t == "macro") {
-						if (!first) self.buf.push(token::space());
-						self.buf.push(token::text(t));
-						first = false;
-					}
-				}
-			}
+			self.process_assignment_left(target, op);
 
 			self.buf.push(token::align(max_op_col));
 			self.buf.push(token::space());
@@ -401,8 +388,13 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 			}
 
 			// Format rest (normally just ';')
-			for (k++; k < ts::node_child_count(target); ++k) {
+			bool found_op = false;
+			for (uint k = 0; k < ts::node_child_count(target); ++k) {
 				TSNode c = ts::node_child(target, k);
+				if (!found_op) {
+					if (ts::node_eq(c, op)) found_op = true;
+					continue;
+				}
 				if (ts::node_eq(c, right)) continue;
 				if (c.type() == ";") {
 					self.buf.push(token::text(";"));
