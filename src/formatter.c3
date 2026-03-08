@@ -1705,16 +1705,15 @@ fn void C3Fmt.process_node(
 			);
 		case "initializer_element":
 			self.process_composite(node);
-		case "param_path": // TODO idk what this is, can we do { .x .y = 34 }??? why is
-			// it a repeat(param_path_element)...
-			self.process_composite(node);
+		case "param_path":
+			self.process_sequence(node);
 		case "typed_initializer_list":
 			self.process_composite(
 				node,
 				skip_space_type: { ")" },
 				skip_space_if_after: { "(" },
 			);
-		case "param_path_element": // TO BE TESTED
+		case "param_path_element":
 		case "unary_expr":
 		case "update_expr":
 		case "optional_expr":
@@ -1743,7 +1742,7 @@ fn void C3Fmt.process_node(
 			}
 		case "subscript_expr":
 		case "range_expr":
-		case "rethrow_expr": // TO BE TESTED
+		case "rethrow_expr":
 		case "type_access_expr":
 			self.process_sequence(node);
 
