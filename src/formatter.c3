@@ -424,6 +424,8 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 					self.buf.push(token::text(";"));
 				} else if (ts::node_is_named(c)) {
 					self.process_node(c);
+				} else {
+					self.buf.push(token::text(c.get_text(self.source_code)));
 				}
 			}
 
@@ -2044,6 +2046,20 @@ fn void C3Fmt.process_node(
 		case "at_type_ident":
 		case "builtin":
 		case "builtin_const":
+		case "$feature":
+		case "$defined":
+		case "$typeof":
+		case "$sizeof":
+		case "$embed":
+		case "$vacount":
+		case "$vaconst":
+		case "$vaarg":
+		case "$vaexpr":
+		case "$eval":
+		case "$is_const":
+		case "$stringify":
+		case "$kindof":
+		case "$assignable":
 		case "integer_literal":
 		case "real_literal":
 		case "char_literal":
@@ -2057,7 +2073,6 @@ fn void C3Fmt.process_node(
 		case "false":
 		case "null":
 		case "default": // maybe not necesarry idk waiting for switch support.
-		case "base_type_name":
 		case "overload_operator":
 		case "doc_comment_contract_descriptor":
 			self.buf.text(node.get_text(self.source_code));
