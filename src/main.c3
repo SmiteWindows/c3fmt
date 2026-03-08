@@ -27,8 +27,6 @@ module c3fmt::executable;
 
 import c3fmt;
 import std::io;
-
-import c3fmt::printer;
 import opt;
 
 struct CLIOptions
@@ -42,6 +40,11 @@ struct CLIOptions
 }
 
 CLIOptions cli_options;
+
+struct Context
+{
+	Config config;
+}
 
 fn int main(String[] args)
 {
@@ -176,56 +179,82 @@ fn int main(String[] args)
 
 	if (arg_last_parsed == args.len)
 	{
-		io::eprintfn("No input file provided.");
+		io::eprintfn("No input file or directory provided.");
 		return 1;
 	}
 
-	if (!cli_options.in_place)
+	if (!cli_options.in_place && !cli_options.stdout)
 	{
 		cli_options.stdout = true;
 	}
 
+	Context ctx = { config };
+
 	for (int i = arg_last_parsed; i < args.len; ++i)
 	{
-		String? content = (String)file::load(mem, args[i]);
-		defer (void)content.free(mem);
-
-		if (catch excuse = content)
+		String entry = args[i];
+		if (io::path::is_dir(io::path::temp(entry)!!))
 		{
-			io::eprintfn("Error: could not read file %s: %s", args[i], excuse);
-			return 1;
+			io::path::traverse(io::path::temp(entry)!!, &format_callback, &ctx)!!;
 		}
+		else
+		{
+			format_file(entry, config)!!;
+		}
+	}
+	return 0;
+}
 
-		String? formatted = c3fmt::format_string(mem, content, config);
-		defer (void)formatted.free(mem);
+fn bool? format_callback(io::path::Path p, bool is_dir, any data)
+{
+	if (is_dir) return false;
+	if (!p.has_extension("c3")) return false;
 
-		if (catch excuse = formatted)
+	Context* ctx = (Context*)data;
+	format_file(p.str_view(), ctx.config)!!;
+	return false;
+}
+
+fn void? format_file(String path, Config config)
+{
+	String? content = (String)file::load(mem, path);
+	defer (void)content.free(mem);
+
+	if (catch excuse = content)
+	{
+		io::eprintfn("Error: could not read file %s: %s", path, excuse);
+		return excuse~;
+	}
+
+	String? formatted = c3fmt::format_string(mem, content, config);
+	defer (void)formatted.free(mem);
+
+	if (catch excuse = formatted)
+	{
+		io::eprintfn(
+			"Error: could not format file %s: %s.",
+			path,
+			excuse
+		);
+		return excuse~;
+	}
+
+	if (cli_options.in_place)
+	{
+		if (catch excuse = file::save(path, formatted))
 		{
 			io::eprintfn(
-				"Error: could not format file %s: %s.",
-				args[i],
+				"Error: could not write to file %s: %s",
+				path,
 				excuse
 			);
-			return 1;
-		}
-
-		if (cli_options.in_place)
-		{
-			if (catch excuse = file::save(args[i], formatted))
-			{
-				io::eprintfn(
-					"Error: could not write to file %s: %s",
-					args[i],
-					excuse
-				);
-			}
-		}
-
-		if (cli_options.stdout)
-		{
-			io::printfn("%s", formatted);
+			return excuse~;
 		}
 	}
 
-	return 0;
+	if (cli_options.stdout)
+	{
+		io::printfn("%s", formatted);
+	}
+	return;
 }
