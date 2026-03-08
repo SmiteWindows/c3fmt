@@ -835,6 +835,11 @@ fn void C3Fmt.process_ct_case_stmt(&self, TSNode node)
 			}
 		}
 	}
+
+	if (!node.has_child_of_type("ct_stmt_body") && !nl_appended)
+	{
+		self.buf.newline();
+	}
 }
 
 fn void C3Fmt.process_asm_block_stmt(&self, TSNode node)
@@ -1852,7 +1857,7 @@ fn void C3Fmt.process_node(
 			self.process_composite(
 				node,
 				skip_space_type: { ";", ")", "," },
-				skip_space_if_after: { "(" },
+				skip_space_if_after: { "(", "$defined" },
 				append_newline: true
 			);
 		case "ct_echo_stmt":
@@ -1879,7 +1884,9 @@ fn void C3Fmt.process_node(
 		case "ct_else_stmt":
 			self.dedent(); // restick
 			self.process_uncanny_scope(node, scope_enter_type: "$else");
-			assert (self.buf.pop()!!.kind == DEDENT);
+			if (try t = self.buf.last()) {
+				if (t.kind == DEDENT) (void)self.buf.pop();
+			}
 		case "ct_for_stmt":
 			self.process_uncanny_scope(node, scope_exit_type: "$endfor");
 		case "ct_for_cond":
