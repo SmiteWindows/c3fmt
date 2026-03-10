@@ -58,11 +58,21 @@ fn void format_worker(any[] args)
 	String path = *(String*)args[0].ptr;
 	Config config = *(Config*)args[1].ptr;
 	Context* ctx = *(Context**)args[2].ptr;
-	(void)format_file(path, config, ctx);
+	if (catch excuse = format_file(path, config, ctx))
+	{
+		io::eprintfn("Error: could not format file %s: %s.", path, excuse);
+	}
 }
 
 fn int main(String[] args)
 {
+	Context ctx;
+	if (catch err = ctx.print_mu.init())
+	{
+		io::eprintfn("Mutex error: %s.", err);
+		return 1;
+	}
+
 	bool version_asked;
 	// c3fmt off
 	int? arg_last_parsed = opt::@parse(//
@@ -207,15 +217,8 @@ fn int main(String[] args)
 		cli_options.stdout = true;
 	}
 
-	Context ctx;
 	ctx.config = config;
 	ctx.has_mismatch = false;
-	if (try ctx.print_mu.init()){
-		defer ctx.print_mu.destroy();
-	} else {
-		io::eprintfn("Mutex error.");
-		return 1;
-	}
 
 	FileList files;
 	files.init(mem, 512);
